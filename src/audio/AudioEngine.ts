@@ -261,6 +261,15 @@ export class AudioEngine {
     }
   }
 
+  public connectCustomNode(node: AudioNode) {
+    if (!this.ctx) this.init();
+    if (this.masterFilter) {
+      node.connect(this.masterFilter);
+    } else {
+      node.connect(this.ctx!.destination);
+    }
+  }
+
   private cleanupOldVoices() {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
