@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { StudioProject, DrumTrack, BassSynthSettings, LeadSynthSettings, ChordPadData, MixerChannel, FXSettings, DrumStep } from '../types/studio';
+import { StudioProject, DrumTrack, BassSynthSettings, SubSynthSettings, LeadSynthSettings, ChordPadData, MixerChannel, FXSettings, DrumStep } from '../types/studio';
 import { audioEngineInstance, getFrequencyForNote } from '../audio/AudioEngine';
 import { FAMOUS_EDM_SONGS, expandBassSteps, expandLeadSteps, expandChordSteps } from './edmMelodies';
 
@@ -728,6 +728,20 @@ export class StudioStoreService {
         length: 1,
       })),
     },
+    subSynth: {
+      oscType: 'sine',
+      filterCutoff: 180,
+      filterResonance: 1.0,
+      envelope: { attack: 0.02, decay: 0.15, sustain: 0.6, release: 0.2 },
+      glide: 0.05,
+      distortion: 0.05,
+      steps: Array(16).fill(null).map((_, i) => ({
+        active: i % 4 === 2,
+        note: i % 8 === 2 ? 'C' : 'G',
+        octave: 1,
+        length: 1,
+      })),
+    },
     leadSynth: {
       oscType: 'sawtooth',
       unisonVoices: 3,
@@ -766,6 +780,7 @@ export class StudioStoreService {
       { id: 'hats', name: 'Hats High', volume: 0.7, pan: -0.15, mute: false, solo: false, reverbSend: 0.12, delaySend: 0.1 },
       { id: 'perc', name: 'Percussions', volume: 0.7, pan: 0.25, mute: false, solo: false, reverbSend: 0.2, delaySend: 0.15 },
       { id: 'bass', name: 'Bass Synth', volume: 0.85, pan: 0.0, mute: false, solo: false, reverbSend: 0.05, delaySend: 0.0 },
+      { id: 'sub', name: 'Sub Synth', volume: 0.8, pan: -0.1, mute: false, solo: false, reverbSend: 0.02, delaySend: 0.0 },
       { id: 'lead', name: 'Lead Arp', volume: 0.75, pan: 0.15, mute: false, solo: false, reverbSend: 0.3, delaySend: 0.3 },
       { id: 'chord', name: 'Chord Pad', volume: 0.7, pan: -0.15, mute: false, solo: false, reverbSend: 0.4, delaySend: 0.2 },
       { id: 'fx', name: 'Special FX', volume: 0.75, pan: -0.3, mute: false, solo: false, reverbSend: 0.35, delaySend: 0.15 },
@@ -955,6 +970,14 @@ export class StudioStoreService {
       audioEngineInstance.playBassNote(time, bStep.note, bStep.octave, duration, bass);
     }
 
+    // 3.5 Sub Synth (16 steps sequencer, syncs sound warmth between Bass and Lead)
+    const sub = this.project.subSynth;
+    if (sub && sub.steps[bassStepIndex] && sub.steps[bassStepIndex].active) {
+      const sStep = sub.steps[bassStepIndex];
+      const duration = (60.0 / this.bpm) * 0.25 * sStep.length;
+      audioEngineInstance.playSubNote(time, sStep.note, sStep.octave, duration, sub);
+    }
+
     // 4. Lead Synth
     const leadStepIndex = step % this.project.patternLength;
     const lead = this.project.leadSynth;
@@ -1012,6 +1035,13 @@ export class StudioStoreService {
 
   public updateBassSynth<K extends keyof BassSynthSettings>(field: K, value: BassSynthSettings[K]) {
     this.project.bassSynth[field] = value;
+    audioEngineInstance.syncState(this.project);
+    this.emit();
+    this.saveToLocalStorage();
+  }
+
+  public updateSubSynth<K extends keyof SubSynthSettings>(field: K, value: SubSynthSettings[K]) {
+    this.project.subSynth[field] = value;
     audioEngineInstance.syncState(this.project);
     this.emit();
     this.saveToLocalStorage();
@@ -1142,6 +1172,9 @@ export class StudioStoreService {
     this.project.bassSynth.steps = Array(16).fill(null).map(() => ({
       active: false, note: 'C', octave: 2, length: 1
     }));
+    this.project.subSynth.steps = Array(16).fill(null).map(() => ({
+      active: false, note: 'C', octave: 1, length: 1
+    }));
     this.project.leadSynth.steps = Array(32).fill(null).map(() => ({
       active: false, note: 'C', octave: 4, velocity: 0.8, length: 1
     }));
@@ -1167,6 +1200,13 @@ export class StudioStoreService {
       note: scales[Math.floor(Math.random() * scales.length)],
       octave: Math.random() < 0.5 ? 2 : 1,
       length: Math.random() < 0.3 ? 2 : 1
+    }));
+
+    this.project.subSynth.steps = Array(16).fill(null).map(() => ({
+      active: Math.random() < 0.4,
+      note: scales[Math.floor(Math.random() * scales.length)],
+      octave: 1,
+      length: Math.random() < 0.2 ? 2 : 1
     }));
 
     this.project.leadSynth.steps = Array(32).fill(null).map(() => ({
@@ -1241,6 +1281,36 @@ export class StudioStoreService {
             ...this.project,
             ...parsed,
           };
+
+          // Ensure subSynth exists in project settings
+          if (!this.project.subSynth) {
+            this.project.subSynth = {
+              oscType: 'sine',
+              filterCutoff: 180,
+              filterResonance: 1.0,
+              envelope: { attack: 0.02, decay: 0.15, sustain: 0.6, release: 0.2 },
+              glide: 0.05,
+              distortion: 0.05,
+              steps: Array(16).fill(null).map((_, i) => ({
+                active: i % 4 === 2,
+                note: i % 8 === 2 ? 'C' : 'G',
+                octave: 1,
+                length: 1,
+              })),
+            };
+          }
+
+          // Ensure 'sub' mixer channel exists
+          if (this.project.mixerChannels && !this.project.mixerChannels.some(c => c.id === 'sub')) {
+            const index = this.project.mixerChannels.findIndex(c => c.id === 'lead');
+            const subCh = { id: 'sub', name: 'Sub Synth', volume: 0.8, pan: -0.1, mute: false, solo: false, reverbSend: 0.02, delaySend: 0.0 };
+            if (index !== -1) {
+              this.project.mixerChannels.splice(index, 0, subCh);
+            } else {
+              this.project.mixerChannels.push(subCh);
+            }
+          }
+
           this.bpm = this.project.bpm;
           this.swing = this.project.swing;
         }
@@ -1321,6 +1391,7 @@ export function useStudioState() {
       toggleInspector: () => studioStore.toggleInspector(),
       updateProjectField: (f: keyof StudioProject, v: any) => studioStore.updateProjectField(f, v),
       updateBassSynth: (f: keyof BassSynthSettings, v: any) => studioStore.updateBassSynth(f, v),
+      updateSubSynth: (f: keyof SubSynthSettings, v: any) => studioStore.updateSubSynth(f, v),
       updateLeadSynth: (f: keyof LeadSynthSettings, v: any) => studioStore.updateLeadSynth(f, v),
       toggleDrumStep: (trackId: string, idx: number) => studioStore.toggleDrumStep(trackId, idx),
       changeDrumVelocity: (trackId: string, idx: number, vel: number) => studioStore.changeDrumVelocity(trackId, idx, vel),

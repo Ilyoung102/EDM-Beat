@@ -15,6 +15,7 @@ export default function Sidebar() {
     { id: 'drum', label: 'Drum Machine', icon: Drum, color: 'cyan' as const },
     { id: 'edm-library', label: 'EDM 샘플 (EDM Vault)', icon: Library, color: 'emerald' as const, badge: '샘플 메뉴' },
     { id: 'bass', label: 'Bass Synth', icon: Zap, color: 'purple' as const },
+    { id: 'sub', label: 'Sub Sync', icon: Zap, color: 'purple' as const },
     { id: 'lead', label: 'Lead Synth', icon: Music, color: 'cyan' as const },
     { id: 'chord', label: 'Chord Pad', icon: Disc, color: 'purple' as const },
     { id: 'mixer', label: 'Mixer Console', icon: Sliders, color: 'emerald' as const },

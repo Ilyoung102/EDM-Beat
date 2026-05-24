@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { StudioProject, DrumTrack, BassSynthSettings, LeadSynthSettings, ChordPadData, MixerChannel, FXSettings, DrumStep } from '../types/studio';
+import { StudioProject, DrumTrack, BassSynthSettings, SubSynthSettings, LeadSynthSettings, ChordPadData, MixerChannel, FXSettings, DrumStep } from '../types/studio';
 
 // Reverb Impulse Response generator
 function createReverbImpulseResponse(ctx: AudioContext, duration: number, decay: number): AudioBuffer {
@@ -106,6 +106,7 @@ export class AudioEngine {
 
   // Active playing notes (for synth glide/envelope releases)
   private activeBassOscs: { osc: OscillatorNode; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number; note: string; secondaryOscs?: OscillatorNode[] }[] = [];
+  private activeSubOscs: { osc: OscillatorNode; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number; note: string; secondaryOscs?: OscillatorNode[] }[] = [];
   private activeLeadVoiceGroups: { oscs: OscillatorNode[]; gain: GainNode; stopTime: number; note: string }[] = [];
   private activeChordOscs: { oscs: OscillatorNode[]; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number }[] = [];
 
@@ -189,7 +190,7 @@ export class AudioEngine {
     this.masterAnalyzer.connect(ctx.destination);
 
     // Set up channels based on standard mixer list
-    const channelIds = ['drum_bus', 'kick', 'snare', 'hats', 'perc', 'bass', 'lead', 'chord', 'fx', 'master'];
+    const channelIds = ['drum_bus', 'kick', 'snare', 'hats', 'perc', 'bass', 'sub', 'lead', 'chord', 'fx', 'master'];
     channelIds.forEach(cid => {
       const g = ctx.createGain();
       const p = ctx.createStereoPanner();
@@ -204,12 +205,14 @@ export class AudioEngine {
       // Routing
       g.connect(p);
       
-      // Send AUX routing
-      p.connect(rSend);
-      rSend.connect(this.reverbNode!);
+      // Send AUX routing (Master channel bypasses AUX sends to avoid feedback loop)
+      if (cid !== 'master') {
+        p.connect(rSend);
+        rSend.connect(this.reverbNode!);
 
-      p.connect(dSend);
-      dSend.connect(this.delayNode!);
+        p.connect(dSend);
+        dSend.connect(this.delayNode!);
+      }
 
       // Master routing behavior
       if (cid === 'master') {
@@ -262,6 +265,23 @@ export class AudioEngine {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     
+    this.activeSubOscs = this.activeSubOscs.filter(item => {
+      if (now > item.stopTime + 0.5) {
+        try {
+          item.gain.disconnect();
+          item.osc.disconnect();
+          item.subOsc?.disconnect();
+          if (item.secondaryOscs) {
+            item.secondaryOscs.forEach(o => {
+              try { o.disconnect(); } catch (err) {}
+            });
+          }
+        } catch (e) {}
+        return false;
+      }
+      return true;
+    });
+
     this.activeBassOscs = this.activeBassOscs.filter(item => {
       if (now > item.stopTime + 0.5) {
         try {
@@ -841,7 +861,21 @@ export class AudioEngine {
 
     // Apply Synth ADSR Filter
     filter.type = 'lowpass';
-    const cutoff = settings.filterCutoff;
+    let cutoff = settings.filterCutoff;
+    
+    // Scale cutoff based on waveform to let specialized harmonics sparkle through!
+    if (settings.oscType === 'metallic') {
+      cutoff = cutoff * 2.8;
+    } else if (settings.oscType === 'guitar') {
+      cutoff = cutoff * 3.8;
+    } else if (settings.oscType === 'piano') {
+      cutoff = cutoff * 2.2;
+    } else if (settings.oscType === 'sine') {
+      cutoff = Math.max(cutoff, 1200); // Let clean sine flow without being choked
+    } else if (settings.oscType === 'triangle') {
+      cutoff = Math.max(cutoff, 1600); // Warm but open triangle
+    }
+
     const env = settings.envelope;
 
     filter.frequency.setValueAtTime(cutoff, time);
@@ -850,14 +884,28 @@ export class AudioEngine {
 
     filter.Q.setValueAtTime(settings.filterResonance, time);
 
+    // Dynamic gain balancing based on the richness of the waveform
+    let noteVolumeScale = 0.7;
+    if (settings.oscType === 'sine') {
+      noteVolumeScale = 1.25; // boost pure sine
+    } else if (settings.oscType === 'triangle') {
+      noteVolumeScale = 1.15; // boost warm triangle
+    } else if (settings.oscType === 'piano') {
+      noteVolumeScale = 0.95; // nice and clean piano
+    } else if (settings.oscType === 'guitar') {
+      noteVolumeScale = 0.9;  // crisp punchy metal string pluck
+    } else if (settings.oscType === 'metallic') {
+      noteVolumeScale = 0.85; // rich bell ring
+    }
+
     // Apply Synth ADSR Volume
     gainNode.gain.setValueAtTime(0, time);
-    gainNode.gain.linearRampToValueAtTime(0.7, time + Math.max(0.002, env.attack));
-    gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, 0.7 * env.sustain), time + env.attack + env.decay);
+    gainNode.gain.linearRampToValueAtTime(noteVolumeScale, time + Math.max(0.002, env.attack));
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, noteVolumeScale * env.sustain), time + env.attack + env.decay);
 
     // Stop and Release scheduler
     const noteEndTime = time + duration;
-    gainNode.gain.setValueAtTime(Math.max(0.0001, 0.7 * env.sustain), noteEndTime);
+    gainNode.gain.setValueAtTime(Math.max(0.0001, noteVolumeScale * env.sustain), noteEndTime);
     gainNode.gain.exponentialRampToValueAtTime(0.0001, noteEndTime + env.release);
 
     osc.start(time);
@@ -881,6 +929,80 @@ export class AudioEngine {
       stopTime: noteEndTime + env.release,
       note: noteName,
       secondaryOscs
+    });
+  }
+
+  // Sub Synth Player (Ultra warm, clean chest-thumping bass)
+
+  public playSubNote(time: number, noteName: string, octave: number, duration: number, settings: SubSynthSettings) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    this.cleanupOldVoices();
+
+    // Prevent excessive overlapping sub voices
+    while (this.activeSubOscs.length > 5) {
+      const old = this.activeSubOscs.shift();
+      try {
+        old?.gain.gain.setValueAtTime(0, ctx.currentTime);
+        old?.gain.disconnect();
+        old?.osc.stop();
+        old?.osc.disconnect();
+        old?.subOsc?.stop();
+        old?.subOsc?.disconnect();
+      } catch (e) {}
+    }
+
+    const freq = getFrequencyForNote(noteName, octave);
+
+    const osc = ctx.createOscillator();
+    osc.type = settings.oscType as any;
+
+    const gainNode = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(this.channels['sub'].gain);
+
+    osc.frequency.setValueAtTime(freq, time);
+
+    // Apply Synth ADSR Filter
+    filter.type = 'lowpass';
+    const cutoff = settings.filterCutoff || 180;
+    const env = settings.envelope;
+
+    filter.frequency.setValueAtTime(cutoff, time);
+    filter.frequency.exponentialRampToValueAtTime(Math.min(cutoff * 4, 1200), time + env.attack);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, cutoff * env.sustain), time + env.attack + env.decay);
+    filter.Q.setValueAtTime(settings.filterResonance || 1.0, time);
+
+    // Deep sub-octave volume scaling (provides magnificent warmth and power!)
+    let noteVolumeScale = 0.8;
+    if (settings.oscType === 'sine') {
+      noteVolumeScale = 1.35; // sine needs extra gain to match saw
+    } else if (settings.oscType === 'triangle') {
+      noteVolumeScale = 1.2;
+    }
+
+    // Apply Synth ADSR Volume
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(noteVolumeScale, time + Math.max(0.002, env.attack));
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, noteVolumeScale * env.sustain), time + env.attack + env.decay);
+
+    // Stop and Release scheduler
+    const noteEndTime = time + duration;
+    gainNode.gain.setValueAtTime(Math.max(0.0001, noteVolumeScale * env.sustain), noteEndTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, noteEndTime + env.release);
+
+    osc.start(time);
+    osc.stop(noteEndTime + env.release);
+
+    this.activeSubOscs.push({
+      osc,
+      subOsc: null,
+      gain: gainNode,
+      stopTime: noteEndTime + env.release,
+      note: noteName
     });
   }
 
@@ -912,10 +1034,25 @@ export class AudioEngine {
     const filter = ctx.createBiquadFilter();
 
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(settings.filterCutoff, time);
+    let cutoff = settings.filterCutoff;
+
+    // Scale cutoff based on waveform to let specialized lead harmonics sparkle through!
+    if (settings.oscType === 'metallic') {
+      cutoff = cutoff * 2.2;
+    } else if (settings.oscType === 'guitar') {
+      cutoff = cutoff * 3.2;
+    } else if (settings.oscType === 'piano') {
+      cutoff = cutoff * 1.8;
+    } else if (settings.oscType === 'sine') {
+      cutoff = Math.max(cutoff, 1500); 
+    } else if (settings.oscType === 'triangle') {
+      cutoff = Math.max(cutoff, 2000); 
+    }
+
+    filter.frequency.setValueAtTime(cutoff, time);
     filter.frequency.linearRampToValueAtTime(20000, time + env.attack);
     filter.frequency.setValueAtTime(20000, time + env.attack);
-    filter.frequency.exponentialRampToValueAtTime(settings.filterCutoff * (0.1 + env.sustain), time + env.attack + env.decay);
+    filter.frequency.exponentialRampToValueAtTime(cutoff * (0.1 + env.sustain), time + env.attack + env.decay);
     filter.Q.setValueAtTime(settings.filterResonance, time);
 
     filter.connect(gainNode);
@@ -1059,7 +1196,15 @@ export class AudioEngine {
 
     // Apply Gain Envelope
     gainNode.gain.setValueAtTime(0, time);
-    const leadTargetLevel = 0.45 / Math.sqrt(voiceCount); // normalize voice stack volume limits
+    let leadTargetLevel = 0.45 / Math.sqrt(voiceCount); // normalize voice stack volume limits
+
+    // Warm gain corrections for SINE and TRIANGLE leads
+    if (settings.oscType === 'sine') {
+      leadTargetLevel = leadTargetLevel * 1.35;
+    } else if (settings.oscType === 'triangle') {
+      leadTargetLevel = leadTargetLevel * 1.25;
+    }
+
     gainNode.gain.linearRampToValueAtTime(leadTargetLevel, time + Math.max(0.002, env.attack));
     gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, leadTargetLevel * env.sustain), time + env.attack + env.decay);
 
@@ -1201,6 +1346,24 @@ export class AudioEngine {
       }
     });
     this.activeBassOscs = [];
+
+    // 1.5 Stop and disconnect all active sub synthesizer voices
+    this.activeSubOscs.forEach(item => {
+      try {
+        item.gain.gain.cancelScheduledValues(now);
+        item.gain.gain.setValueAtTime(0, now);
+        
+        item.osc.stop();
+        item.osc.disconnect();
+        
+        if (item.subOsc) {
+          item.subOsc.stop();
+          item.subOsc.disconnect();
+        }
+        item.gain.disconnect();
+      } catch (e) {}
+    });
+    this.activeSubOscs = [];
 
     // 2. Stop and disconnect all active lead synthesizer voice groups
     this.activeLeadVoiceGroups.forEach(item => {

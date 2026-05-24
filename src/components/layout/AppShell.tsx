@@ -16,6 +16,7 @@ import GiantVolumeOverlay from '../common/GiantVolumeOverlay';
 import DrumMachine from '../drum/DrumMachine';
 import EDMLibrary from '../project/EDMLibrary';
 import BassSynth from '../synth/BassSynth';
+import SubSynth from '../synth/SubSynth';
 import LeadSynth from '../synth/LeadSynth';
 import ChordPad from '../chord/ChordPad';
 import Mixer from '../mixer/Mixer';
@@ -47,6 +48,8 @@ export default function AppShell() {
         return <EDMLibrary />;
       case 'bass':
         return <BassSynth />;
+      case 'sub':
+        return <SubSynth />;
       case 'lead':
         return <LeadSynth />;
       case 'chord':

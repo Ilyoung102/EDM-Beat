@@ -45,6 +45,21 @@ export interface BassSynthSettings {
   }[]; // 16 steps
 }
 
+export interface SubSynthSettings {
+  oscType: OscType;
+  filterCutoff: number; // Hz (20 to 20000)
+  filterResonance: number; // Q (0.1 to 30)
+  envelope: EnvelopeSettings;
+  glide: number; // glide time in seconds (0 to 1)
+  distortion: number; // amount (0 to 1)
+  steps: {
+    active: boolean;
+    note: string; // e.g. "C1"
+    octave: number; // 1 to 3
+    length: number; // step duration multiplier (1 to 4)
+  }[]; // 16 steps
+}
+
 export interface LeadSynthSettings {
   oscType: OscType;
   unisonVoices: number; // 1 to 5
@@ -103,7 +118,7 @@ export interface FXSettings {
 }
 
 export interface MixerChannel {
-  id: string; // 'drum_bus' | 'kick' | 'snare' | 'hats' | 'perc' | 'bass' | 'lead' | 'chord' | 'fx' | 'master'
+  id: string; // 'drum_bus' | 'kick' | 'snare' | 'hats' | 'perc' | 'bass' | 'sub' | 'lead' | 'chord' | 'fx' | 'master'
   name: string;
   volume: number; // 0 to 1.2f (fader)
   pan: number; // -1 to 1
@@ -123,6 +138,7 @@ export interface StudioProject {
   metronome: boolean;
   drumTracks: DrumTrack[];
   bassSynth: BassSynthSettings;
+  subSynth: SubSynthSettings;
   leadSynth: LeadSynthSettings;
   chordPads: ChordPadData[];
   chordSteps: {
