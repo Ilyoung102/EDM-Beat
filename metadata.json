@@ -1,0 +1,6 @@
+{
+  "name": "EDM Beat Studio",
+  "description": "An interactive pocket EDM synthesizer, drum machine, effects processor, and mixing studio powered by Web Audio API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
