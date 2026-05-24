@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useStudioState, EDM_GENRE_PRESETS } from '../../store/useStudioStore';
+import { FAMOUS_EDM_SONGS } from '../../store/edmMelodies';
 import { Play, Sparkles, FolderOpen, Tag, Music, Sliders, Search, Activity, HelpCircle } from 'lucide-react';
 import { audioEngineInstance } from '../../audio/AudioEngine';
 import LED from '../common/LED';
@@ -14,6 +15,17 @@ export default function EDMLibrary() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubGenre, setSelectedSubGenre] = useState<'All' | 'House/Techno' | 'Bass/Breaks' | 'High Energy/Retro'>('All');
   const [justApplied, setJustApplied] = useState<string | null>(null);
+
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const justAppliedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
+      if (justAppliedTimeoutRef.current) clearTimeout(justAppliedTimeoutRef.current);
+    };
+  }, []);
 
   // Categorize the 30 presets
   const getGenreCategory = (name: string): 'House/Techno' | 'Bass/Breaks' | 'High Energy/Retro' => {
@@ -35,10 +47,12 @@ export default function EDMLibrary() {
   };
 
   const allPresets = Object.entries(EDM_GENRE_PRESETS).map(([name, data]) => {
+    const famous = FAMOUS_EDM_SONGS[name];
     return {
       name,
-      bpm: data.bpm,
-      description: data.description,
+      songTitle: famous ? famous.title : name,
+      bpm: famous ? famous.bpm : data.bpm,
+      description: famous ? famous.description : data.description,
       category: getGenreCategory(name),
     };
   });
@@ -51,32 +65,44 @@ export default function EDMLibrary() {
   });
 
   const handleApplyPreset = (name: string) => {
+    // 1. Immediately cancel any scheduled preview timeouts to prevent overlap
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+    }
+    if (justAppliedTimeoutRef.current) {
+      clearTimeout(justAppliedTimeoutRef.current);
+    }
+
+    // 2. Kill all decaying and current synth/chord voice sounds in context
+    audioEngineInstance.stopAllSounds();
+
+    // 3. Apply preset selection
     actions.applyPreset(name);
     setJustApplied(name);
     
     // Smooth live sound preview of the applied genre preset
-    setTimeout(() => {
+    previewTimeoutRef.current = setTimeout(() => {
       audioEngineInstance.resume();
       const ctx = audioEngineInstance.ctx;
       if (ctx) {
         const now = ctx.currentTime;
-        // 1. Play the kick for rhythm stamp
+        // Play the kick for rhythm stamp
         audioEngineInstance.playKick(now, 1.0);
         
-        // 2. Play a representative deep bass synth note
+        // Play a representative deep bass synth note
         const bassSynth = state.project.bassSynth;
         if (bassSynth) {
           audioEngineInstance.playBassNote(now + 0.05, 'C', 2, 0.45, bassSynth);
         }
         
-        // 3. Play a warm lush chords pad progression chord
+        // Play a warm lush chords pad progression chord
         if (state.project.chordPads && state.project.chordPads.length > 0) {
           audioEngineInstance.playChordPad(now + 0.1, state.project.chordPads[0], 1.2);
         }
       }
     }, 80);
 
-    setTimeout(() => {
+    justAppliedTimeoutRef.current = setTimeout(() => {
       setJustApplied(null);
     }, 2000);
   };
@@ -186,8 +212,9 @@ export default function EDMLibrary() {
                 {/* Giant Title */}
                 <h3 className="text-sm font-mono font-bold text-white tracking-wide flex items-center gap-2">
                   <Music size={13} className={textAccentColor} />
-                  {preset.name}
+                  {preset.songTitle}
                 </h3>
+                <span className="text-[10px] font-mono text-slate-500 block mt-1">Genre: {preset.name}</span>
 
                 {/* Description block */}
                 <p className="text-[10.5px] font-mono text-slate-400 mt-2.5 leading-relaxed bg-slate-950/40 p-2.5 rounded border border-slate-900 min-h-[56px]">

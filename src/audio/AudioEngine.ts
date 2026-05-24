@@ -89,6 +89,7 @@ export class AudioEngine {
   // Active playing notes (for synth glide/envelope releases)
   private activeBassOscs: { osc: OscillatorNode; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number; note: string }[] = [];
   private activeLeadVoiceGroups: { oscs: OscillatorNode[]; gain: GainNode; stopTime: number; note: string }[] = [];
+  private activeChordOscs: { oscs: OscillatorNode[]; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number }[] = [];
 
   constructor() {
     // Lazy initialize to bypass user gesture policy on load
@@ -231,8 +232,52 @@ export class AudioEngine {
     }
   }
 
+  private cleanupOldVoices() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    
+    this.activeBassOscs = this.activeBassOscs.filter(item => {
+      if (now > item.stopTime + 0.5) {
+        try {
+          item.gain.disconnect();
+          item.osc.disconnect();
+          item.subOsc?.disconnect();
+        } catch (e) {}
+        return false;
+      }
+      return true;
+    });
+
+    this.activeLeadVoiceGroups = this.activeLeadVoiceGroups.filter(item => {
+      if (now > item.stopTime + 0.5) {
+        try {
+          item.gain.disconnect();
+          item.oscs.forEach(o => o.disconnect());
+        } catch (e) {}
+        return false;
+      }
+      return true;
+    });
+
+    this.activeChordOscs = this.activeChordOscs.filter(item => {
+      if (now > item.stopTime + 0.5) {
+        try {
+          item.gain.disconnect();
+          item.oscs.forEach(o => o.disconnect());
+          item.subOsc?.disconnect();
+        } catch (e) {}
+        return false;
+      }
+      return true;
+    });
+  }
+
   private updateDistortionCurve(drive: number) {
     if (!this.waveShaper) return;
+    if (drive <= 0) {
+      this.waveShaper.curve = null;
+      return;
+    }
     const k = typeof drive === 'number' ? drive * 80 : 50;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
@@ -303,7 +348,9 @@ export class AudioEngine {
     state.mixerChannels.forEach(c => {
       const channel = this.channels[c.id];
       if (channel) {
-        const val = c.mute ? 0 : c.volume;
+        // Gain safety scaling to provide headroom and prevent master clipping
+        const gainScale = c.id === 'master' ? 0.70 : 0.60;
+        const val = c.mute ? 0 : c.volume * gainScale;
         channel.gain.gain.setValueAtTime(val, now);
         channel.panner.pan.setValueAtTime(c.pan, now);
         channel.reverbSend.gain.setValueAtTime(c.reverbSend * 0.4, now);
@@ -577,11 +624,19 @@ export class AudioEngine {
   public playBassNote(time: number, noteName: string, octave: number, duration: number, settings: BassSynthSettings) {
     if (!this.ctx) return;
     const ctx = this.ctx;
+    this.cleanupOldVoices();
 
     // Cleanup active bass notes to execute portamento glide if required
     while (this.activeBassOscs.length > 5) {
       const old = this.activeBassOscs.shift();
-      old?.gain.gain.setValueAtTime(0, ctx.currentTime);
+      try {
+        old?.gain.gain.setValueAtTime(0, ctx.currentTime);
+        old?.gain.disconnect();
+        old?.osc.stop();
+        old?.osc.disconnect();
+        old?.subOsc?.stop();
+        old?.subOsc?.disconnect();
+      } catch (e) {}
     }
 
     const freq = getFrequencyForNote(noteName, octave);
@@ -602,20 +657,25 @@ export class AudioEngine {
       subOsc.connect(filter);
     }
 
-    // Distortion
-    const k = settings.distortion * 50;
-    const n_samples = 44100;
-    const curve = new Float32Array(n_samples);
-    const deg = Math.PI / 180;
-    for (let i = 0; i < n_samples; ++i) {
-      const x = (i * 2) / n_samples - 1;
-      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-    }
-    dist.curve = curve;
-
     osc.connect(filter);
-    filter.connect(dist);
-    dist.connect(gainNode);
+
+    if (settings.distortion > 0) {
+      // Distortion
+      const k = settings.distortion * 50;
+      const n_samples = 44100;
+      const curve = new Float32Array(n_samples);
+      const deg = Math.PI / 180;
+      for (let i = 0; i < n_samples; ++i) {
+        const x = (i * 2) / n_samples - 1;
+        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+      }
+      dist.curve = curve;
+      filter.connect(dist);
+      dist.connect(gainNode);
+    } else {
+      filter.connect(gainNode);
+    }
+    
     gainNode.connect(this.channels['bass'].gain);
 
     // Apply Synth ADSR Filter
@@ -661,6 +721,20 @@ export class AudioEngine {
   public playLeadNote(time: number, noteName: string, octave: number, duration: number, settings: LeadSynthSettings) {
     if (!this.ctx) return;
     const ctx = this.ctx;
+    this.cleanupOldVoices();
+
+    // Prevent excessive overlapping lead voices
+    while (this.activeLeadVoiceGroups.length > 8) {
+      const old = this.activeLeadVoiceGroups.shift();
+      try {
+        old?.gain.gain.setValueAtTime(0, ctx.currentTime);
+        old?.gain.disconnect();
+        old?.oscs.forEach(o => {
+          o.stop();
+          o.disconnect();
+        });
+      } catch (e) {}
+    }
 
     const freq = getFrequencyForNote(noteName, octave);
     const env = settings.envelope;
@@ -753,6 +827,8 @@ export class AudioEngine {
     filter.connect(gainNode);
     gainNode.connect(this.channels['chord'].gain);
 
+    const oscs: OscillatorNode[] = [];
+
     // Trigger triad / seventh notes
     semitoneOffsets.forEach(offset => {
       const targetMidi = rootIndex + offset;
@@ -767,6 +843,7 @@ export class AudioEngine {
       osc.connect(filter);
       osc.start(time);
       osc.stop(time + duration + 0.4);
+      oscs.push(osc);
     });
 
     // Sub base anchor pad
@@ -782,6 +859,13 @@ export class AudioEngine {
     gainNode.gain.linearRampToValueAtTime(0.3, time + 0.08); // soft lush attack
     gainNode.gain.setValueAtTime(0.3, time + duration);
     gainNode.gain.exponentialRampToValueAtTime(0.0001, time + duration + 0.35);
+
+    this.activeChordOscs.push({
+      oscs,
+      subOsc,
+      gain: gainNode,
+      stopTime: time + duration + 0.4
+    });
   }
 
   // Live Audition triggers
@@ -803,6 +887,69 @@ export class AudioEngine {
     else if (trackId === 'perc') this.playPerc(t, 1.0);
     else if (trackId === 'ride') this.playRide(t, 1.0);
     else if (trackId === 'fx') this.playFXHit(t, 1.0);
+  }
+
+  public stopAllSounds() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Stop and disconnect all active bass synthesizer oscillators
+    this.activeBassOscs.forEach(item => {
+      try {
+        item.gain.gain.cancelScheduledValues(now);
+        item.gain.gain.setValueAtTime(0, now);
+        
+        item.osc.stop();
+        item.osc.disconnect();
+        
+        if (item.subOsc) {
+          item.subOsc.stop();
+          item.subOsc.disconnect();
+        }
+        item.gain.disconnect();
+      } catch (e) {
+        // Safe catch for already stopped / inactive nodes
+      }
+    });
+    this.activeBassOscs = [];
+
+    // 2. Stop and disconnect all active lead synthesizer voice groups
+    this.activeLeadVoiceGroups.forEach(item => {
+      try {
+        item.gain.gain.cancelScheduledValues(now);
+        item.gain.gain.setValueAtTime(0, now);
+        
+        item.oscs.forEach(osc => {
+          osc.stop();
+          osc.disconnect();
+        });
+        item.gain.disconnect();
+      } catch (e) {
+        // Safe catch
+      }
+    });
+    this.activeLeadVoiceGroups = [];
+
+    // 3. Stop and disconnect all active chord pad voices
+    this.activeChordOscs.forEach(item => {
+      try {
+        item.gain.gain.cancelScheduledValues(now);
+        item.gain.gain.setValueAtTime(0, now);
+        
+        item.oscs.forEach(osc => {
+          osc.stop();
+          osc.disconnect();
+        });
+        if (item.subOsc) {
+          item.subOsc.stop();
+          item.subOsc.disconnect();
+        }
+        item.gain.disconnect();
+      } catch (e) {
+        // Safe catch
+      }
+    });
+    this.activeChordOscs = [];
   }
 }
 

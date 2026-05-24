@@ -211,7 +211,6 @@ export default function LeadSynth() {
             <Knob
               min={1}
               max={5}
-              step={1}
               value={lead.unisonVoices}
               onChange={(val) => actions.updateLeadSynth('unisonVoices', val)}
               unit="v"

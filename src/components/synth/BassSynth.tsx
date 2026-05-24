@@ -176,7 +176,7 @@ export default function BassSynth() {
               value={bass.filterCutoff}
               onChange={(val) => actions.updateBassSynth('filterCutoff', val)}
               unit="Hz"
-              color="fuchsia"
+              color="purple"
             />
           </div>
 
@@ -188,7 +188,7 @@ export default function BassSynth() {
               value={bass.filterResonance}
               onChange={(val) => actions.updateBassSynth('filterResonance', val)}
               unit="Q"
-              color="fuchsia"
+              color="purple"
             />
           </div>
 
@@ -200,7 +200,7 @@ export default function BassSynth() {
               value={bass.distortion}
               onChange={(val) => actions.updateBassSynth('distortion', val)}
               unit="x"
-              color="rose"
+              color="amber"
             />
           </div>
 

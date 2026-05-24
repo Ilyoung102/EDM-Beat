@@ -4,17 +4,92 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useStudioState } from '../../store/useStudioStore';
+import { useStudioState, EDM_GENRE_PRESETS } from '../../store/useStudioStore';
+import { FAMOUS_EDM_SONGS } from '../../store/edmMelodies';
 import { audioEngineInstance } from '../../audio/AudioEngine';
 import NeonButton from '../common/NeonButton';
 import LED from '../common/LED';
-import { Play, Square, Pause, Volume2, ShieldAlert, Cpu, Menu, Sliders } from 'lucide-react';
+import { Play, Square, Pause, Volume2, ShieldAlert, Cpu, Menu, Sliders, Sparkles, FolderDown } from 'lucide-react';
 
 export default function TopTransport() {
   const { state, actions } = useStudioState();
   const [cpuUsage, setCpuUsage] = useState(2);
   const [masterPeak, setMasterPeak] = useState(-60); // dB peak fader
   const meterInterval = useRef<any>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsVaultOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // Categorize the 30 presets for nice visual grouping in the dropdown
+  const getGenreCategory = (name: string): 'House/Techno' | 'Bass/Breaks' | 'High Energy/Retro' => {
+    const nameLower = name.toLowerCase();
+    
+    const houseTechnoList = [
+      'house', 'techno', 'electro house', 'deep house', 'progressive house', 
+      'acid techno', 'minimal', 'french house', 'melodic techno', 'future house', 'lo-fi house'
+    ];
+    
+    const bassBreaksList = [
+      'dubstep', 'future bass', 'drum & bass', 'trap', 'garage / ukg', 
+      'breakbeat', 'phonk', 'hardwave', 'glitch hop'
+    ];
+
+    if (houseTechnoList.some(g => nameLower.includes(g))) return 'House/Techno';
+    if (bassBreaksList.some(g => nameLower.includes(g))) return 'Bass/Breaks';
+    return 'High Energy/Retro';
+  };
+
+  const groupedPresets: Record<string, { name: string; bpm: number; description: string; songTitle: string }[]> = {
+    'House / Techno Grooves 🏡': [],
+    'Bass Heavy / Breakbeats 💥': [],
+    'High Energy Sync / Retro 🚀': []
+  };
+
+  Object.entries(EDM_GENRE_PRESETS).forEach(([name, data]) => {
+    const category = getGenreCategory(name);
+    const famous = FAMOUS_EDM_SONGS[name];
+    const item = { 
+      name, 
+      bpm: famous ? famous.bpm : data.bpm, 
+      description: famous ? famous.description : data.description,
+      songTitle: famous ? famous.title : name
+    };
+    if (category === 'House/Techno') {
+      groupedPresets['House / Techno Grooves 🏡'].push(item);
+    } else if (category === 'Bass/Breaks') {
+      groupedPresets['Bass Heavy / Breakbeats 💥'].push(item);
+    } else {
+      groupedPresets['High Energy Sync / Retro 🚀'].push(item);
+    }
+  });
+
+  const matchedPreset = Object.keys(EDM_GENRE_PRESETS).find(name => {
+    const famous = FAMOUS_EDM_SONGS[name];
+    const bpm = famous ? famous.bpm : EDM_GENRE_PRESETS[name].bpm;
+    return bpm === state.bpm;
+  });
+  const currentPresetName = matchedPreset ? (FAMOUS_EDM_SONGS[matchedPreset]?.title || matchedPreset) : 'CUSTOM SESSION';
+
+  const handleLoadPreset = (name: string) => {
+    actions.applyPreset(name);
+    setIsVaultOpen(false);
+    actions.play();
+  };
+
+  const handleQuickLaunch = (name: string) => {
+    actions.applyPreset(name);
+    actions.play();
+  };
 
   // Poll Peak Analyser for Visual feedback
   useEffect(() => {
@@ -92,6 +167,144 @@ export default function TopTransport() {
               pro pocket rack
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* 30 Master Preset Vault Dropdown & Quick Play Icons */}
+      <div className="flex items-center gap-2 bg-slate-900/40 p-1.5 rounded-xl border border-slate-850/80 max-w-full relative">
+        <label className="text-[9px] font-mono font-black text-cyan-400 tracking-wider flex items-center gap-1 shrink-0 pl-1">
+          <Sparkles size={11} className="text-cyan-400 animate-pulse" />
+          <span>VAULT:</span>
+        </label>
+
+        {/* Dropdown Selector */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsVaultOpen(!isVaultOpen)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-xs font-mono font-bold text-slate-200 transition-all cursor-pointer shadow-[0_0_8px_rgba(0,0,0,0.5)] active:scale-95 select-none"
+            title="Open 30 Legendary EDM Preset Master Vault"
+            id="preset-vault-dropdown-trigger"
+          >
+            <FolderDown size={13} className="text-cyan-400" />
+            <span className="truncate max-w-[100px] sm:max-w-[130px]">{currentPresetName}</span>
+            <span className="px-1 py-0.5 text-[8px] bg-cyan-950 text-cyan-400 border border-cyan-800/40 rounded scale-90 font-black">30 GENRES</span>
+          </button>
+
+          {isVaultOpen && (
+            <div 
+              className="absolute left-0 mt-2 w-72 max-h-[420px] overflow-y-auto bg-slate-950 border border-cyan-500/40 rounded-xl shadow-[0_4px_30px_rgba(0,180,216,0.25)] z-[100] animate-scale-up p-2 scrollbar-thin"
+              id="preset-vault-dropdown-menu"
+            >
+              <div className="text-[9px] font-mono text-cyan-400/70 border-b border-slate-850 pb-1.5 mb-1.5 px-2 tracking-widest font-black uppercase flex items-center justify-between">
+                <span>📀 30 COMPLETE MASTER TRACKS</span>
+                <span className="text-[8px] bg-cyan-950 text-cyan-400 border border-cyan-800 rounded px-1">AUTO-PLAY</span>
+              </div>
+
+              {/* Categorized List */}
+              {Object.keys(groupedPresets).map((categoryName) => (
+                <div key={categoryName} className="mb-2.5">
+                  <span className="text-[8px] font-mono font-bold text-slate-500 uppercase tracking-widest block px-2 mb-1">
+                    {categoryName}
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    {groupedPresets[categoryName].map((preset) => (
+                      <button
+                        key={preset.name}
+                        onClick={() => handleLoadPreset(preset.name)}
+                        className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left select-none transition-all duration-100 cursor-pointer ${
+                          state.bpm === preset.bpm
+                            ? 'bg-cyan-950/40 border border-cyan-500/30 text-cyan-300'
+                            : 'hover:bg-slate-900 border border-transparent text-slate-400 hover:text-white'
+                        }`}
+                        title={preset.description}
+                        id={`vault-preset-btn-${preset.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                      >
+                        <div className="truncate max-w-[170px]">
+                          <span className="text-xs font-mono font-bold block truncate text-slate-200">
+                            {preset.songTitle}
+                          </span>
+                          <span className="text-[8.5px] font-mono text-cyan-400 block -mt-0.5 mb-0.5">
+                            Genre: {preset.name}
+                          </span>
+                          <span className="text-[8px] font-mono text-slate-500 truncate block text-ellipsis overflow-hidden">
+                            {preset.description}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] font-mono text-slate-400 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">
+                            {preset.bpm}
+                          </span>
+                          <Play size={10} className="text-cyan-400/70" fill={state.bpm === preset.bpm ? 'currentColor' : 'none'} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="h-6 w-[1px] bg-slate-800" />
+
+        {/* Quick run buttons */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleQuickLaunch('House')}
+            className={`w-7 h-7 rounded border flex items-center justify-center transition active:scale-90 cursor-pointer relative group ${
+              state.bpm === 124 && state.isPlaying
+                ? 'bg-cyan-950 border-cyan-500 text-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
+                : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30'
+            }`}
+            title="🏡 Load & Play House"
+            id="quick-play-house"
+          >
+            <span className="text-xs group-hover:scale-115 transition-transform font-bold">🏡</span>
+            {state.bpm === 124 && state.isPlaying && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => handleQuickLaunch('Acid Techno')}
+            className={`w-7 h-7 rounded border flex items-center justify-center transition active:scale-90 cursor-pointer relative group ${
+              state.bpm === 135 && state.isPlaying
+                ? 'bg-fuchsia-950 border-fuchsia-500 text-fuchsia-400 shadow-[0_0_8px_rgba(240,79,250,0.3)]'
+                : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-fuchsia-400 hover:border-fuchsia-500/30'
+            }`}
+            title="☢️ Load & Play Acid Techno"
+            id="quick-play-acid"
+          >
+            <span className="text-xs group-hover:scale-115 transition-transform font-bold">☢️</span>
+            {state.bpm === 135 && state.isPlaying && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fuchsia-400"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-fuchsia-500"></span>
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => handleQuickLaunch('Future Bass')}
+            className={`w-7 h-7 rounded border flex items-center justify-center transition active:scale-90 cursor-pointer relative group ${
+              state.bpm === 150 && state.isPlaying
+                ? 'bg-amber-950 border-amber-500 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-amber-400 hover:border-amber-500/30'
+            }`}
+            title="⚡ Load & Play Future Bass"
+            id="quick-play-future-bass"
+          >
+            <span className="text-xs group-hover:scale-115 transition-transform font-bold">⚡</span>
+            {state.bpm === 150 && state.isPlaying && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+              </span>
+            )}
+          </button>
         </div>
       </div>
 

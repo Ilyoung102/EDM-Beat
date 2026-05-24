@@ -6,6 +6,7 @@
 import React from 'react';
 import { useStudioState } from '../../store/useStudioStore';
 import { EDM_GENRE_PRESETS } from '../../store/useStudioStore';
+import { FAMOUS_EDM_SONGS } from '../../store/edmMelodies';
 import StepGrid from './StepGrid';
 import NeonButton from '../common/NeonButton';
 import LED from '../common/LED';
@@ -47,11 +48,14 @@ export default function DrumMachine() {
               defaultValue=""
             >
               <option value="" disabled>-- SELECT GENRE --</option>
-              {Object.keys(EDM_GENRE_PRESETS).map((genre) => (
-                <option key={genre} value={genre} className="bg-slate-950 text-slate-300">
-                  {genre.toUpperCase()}
-                </option>
-              ))}
+              {Object.keys(EDM_GENRE_PRESETS).map((genre) => {
+                const famous = FAMOUS_EDM_SONGS[genre];
+                return (
+                  <option key={genre} value={genre} className="bg-slate-950 text-slate-300">
+                    {genre.toUpperCase()} {famous ? `(${famous.title})` : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

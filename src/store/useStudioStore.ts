@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { StudioProject, DrumTrack, BassSynthSettings, LeadSynthSettings, ChordPadData, MixerChannel, FXSettings, DrumStep } from '../types/studio';
 import { audioEngineInstance, getFrequencyForNote } from '../audio/AudioEngine';
+import { FAMOUS_EDM_SONGS, expandBassSteps, expandLeadSteps, expandChordSteps } from './edmMelodies';
 
 // Genre Drum Presets Default Generator
 const pP = (arr: number[], vel = 1.0): DrumStep[] => {
@@ -438,6 +439,216 @@ export const EDM_GENRE_PRESETS: Record<string, { bpm: number; tracks: DrumStep[]
       pP([1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.5),
       pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.9)
     ]
+  },
+  'Anthem Trance': {
+    bpm: 136,
+    description: 'High energy epic build with rapid arpeggios, marching hats, and thunderous 4-on-the-floor kick.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.1),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.8),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], 0.5),
+      pP([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0], 0.7),
+      pP([0,0,0,1, 0,0,0,1, 0,0,0,1, 0,0,0,1], 0.6),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.4),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.5)
+    ]
+  },
+  'Tech House': {
+    bpm: 125,
+    description: 'Bouncing minimal tech groove, heavy offbeat clap, infectious cowbell perk, and shuffling hats.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.15),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.8),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.9),
+      pP([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0], 0.65),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([0,0,0,1, 1,0,0,0, 0,1,0,0, 0,0,1,0], 0.6),
+      pP([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0], 0.45),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.5)
+    ]
+  },
+  'Electro Classic': {
+    bpm: 128,
+    description: 'Chugging distortion electro bass grooves, slamming snare and clap overlaps, and metallic rides.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.2),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.9),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.8),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.7),
+      pP([0,0,0,1, 0,0,0,1, 0,0,0,1, 0,0,1,0], 0.8),
+      pP([0,0,1,0, 1,0,0,1, 0,1,0,0, 0,1,0,0], 0.6),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.55),
+      pP([0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.5)
+    ]
+  },
+  'Global Deep House': {
+    bpm: 120,
+    description: 'Hypnotic organic percussion, warm smooth pocket bass sub, and vintage rimshot snare.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.0),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,0,0], 0.6),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.75),
+      pP([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0], 0.6),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.7),
+      pP([1,0,1,0, 0,1,0,1, 1,0,1,0, 0,1,0,1], 0.65),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.4),
+      pP([1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.5)
+    ]
+  },
+  'Rumble Bass': {
+    bpm: 140,
+    description: 'Spacious sub-grime dark urban beat, heavy snare on 3rd beat, and rapid trap hihat stutter rolls.',
+    tracks: [
+      pP([1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 1.2),
+      pP([0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 1.0),
+      pP([0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.8),
+      pP([1,1,1,1, 1,0,1,1, 1,1,1,0, 1,1,1,1], 0.7),
+      pP([0,0,1,0, 0,0,0,0, 0,0,1,0, 0,0,0,0], 0.6),
+      pP([0,0,0,1, 1,0,1,0, 0,0,0,1, 1,0,0,0], 0.55),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.4),
+      pP([1,0,1,0, 0,1,0,0, 1,0,0,0, 0,0,0,0], 0.6)
+    ]
+  },
+  'Big Beat': {
+    bpm: 124,
+    description: 'Slamming classic breakbeat with heavy driving kick, massive rock snare, and crashing rides.',
+    tracks: [
+      pP([1,0,0,0, 0,0,1,0, 0,1,0,0, 1,0,0,0], 1.15),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1], 1.05),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.8),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.7),
+      pP([0,0,0,1, 0,1,0,0, 0,0,0,1, 0,1,0,0], 0.8),
+      pP([0,0,1,0, 1,0,0,1, 0,1,0,0, 0,0,0,0], 0.65),
+      pP([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], 0.6),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.6)
+    ]
+  },
+  'Funk Breakbeat': {
+    bpm: 110,
+    description: 'Old-school hip-hop funk breakbeat, punchy delayed syncopated snares, and organic shuffles.',
+    tracks: [
+      pP([1,0,0,0, 0,0,0,0, 0,0,1,0, 0,1,0,0], 1.1),
+      pP([0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,0,1], 0.95),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.6),
+      pP([1,1,1,0, 1,1,1,1, 1,0,1,1, 1,1,1,1], 0.65),
+      pP([0,0,0,1, 0,0,0,0, 0,0,0,1, 0,0,0,1], 0.75),
+      pP([0,0,1,0, 0,1,0,0, 1,1,0,0, 0,0,1,0], 0.6),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.4),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,0,0], 0.5)
+    ]
+  },
+  'Filter Disco House': {
+    bpm: 123,
+    description: 'Happy looping filter sweeps, punchy 4x4 pumping kick, and bright sizzling disco open hats.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.12),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.5),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0], 0.6),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.9),
+      pP([0,0,0,1, 0,1,0,0, 0,0,0,1, 0,1,0,0], 0.5),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.5),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.65)
+    ]
+  },
+  'Festival Progressive': {
+    bpm: 128,
+    description: 'Mainstage festival energy anthemic buildup, massive snare rolls, and huge euphoric main drop.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.15),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,1,1], 0.8),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], 0.55),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([0,0,0,0, 0,0,0,0, 1,0,1,0, 0,0,1,1], 0.6),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.5),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.6)
+    ]
+  },
+  'Chill Step': {
+    bpm: 90,
+    description: 'Slow dreaming melodic half-time beats, cozy snaps and claps, and atmospheric airy pads.',
+    tracks: [
+      pP([1,0,0,0, 0,0,0,1, 0,0,1,0, 0,0,0,0], 1.05),
+      pP([0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.85),
+      pP([0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.8),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.55),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.6),
+      pP([0,0,1,0, 0,1,0,0, 0,0,0,1, 0,1,0,0], 0.5),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.3),
+      pP([1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.6)
+    ]
+  },
+  'Emotional UK House': {
+    bpm: 134,
+    description: 'Intense UK style 4x4 shuffling garage rims, heavy emotional sidechained chords, and deep sub bass.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.15),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.7),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([1,0,1,1, 1,0,1,1, 1,0,1,1, 1,0,1,1], 0.65),
+      pP([0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,0,1], 0.8),
+      pP([0,0,1,0, 0,0,1,0, 0,1,0,0, 1,0,1,0], 0.6),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.4),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.55)
+    ]
+  },
+  'Italo Dance': {
+    bpm: 130,
+    description: 'Happy looping melodic arcade retro riffs, galloping synth bass, and high speed crash rides.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.12),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.6),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.8),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.6),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.75),
+      pP([0,0,0,1, 0,1,0,0, 0,0,1,0, 0,1,0,0], 0.55),
+      pP([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], 0.5),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.6)
+    ]
+  },
+  'Dancefloor DnB': {
+    bpm: 174,
+    description: 'Super-high speed roll breakbeats, massive modern dancefloor Snare on 2nd and 4th beats, and ground sub.',
+    tracks: [
+      pP([1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0], 1.2),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1], 1.1),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.8),
+      pP([1,1,1,0, 1,1,1,1, 1,0,1,1, 1,1,1,1], 0.65),
+      pP([0,0,0,1, 0,0,0,0, 0,0,0,1, 0,0,0,0], 0.85),
+      pP([0,0,1,0, 0,1,0,0, 1,0,0,0, 0,0,1,0], 0.6),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.4),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,0,0], 0.55)
+    ]
+  },
+  'Peak Techno': {
+    bpm: 135,
+    description: 'Fierce prime time peak techno rumble kick, high-resonance modular laser synthesis claps.',
+    tracks: [
+      pP([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], 1.2),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.7),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.95),
+      pP([0,0,1,0, 1,0,1,0, 0,0,1,0, 1,0,1,1], 0.7),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.9),
+      pP([0,0,1,0, 0,1,0,1, 0,0,1,0, 0,1,0,1], 0.6),
+      pP([1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0], 0.5),
+      pP([1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0], 0.6)
+    ]
+  },
+  'Hardstyle Anthem': {
+    bpm: 150,
+    description: 'Distorted screech pitch bending high-pass lead, reversing sub bass sweeps, and colossal head banging drops.',
+    tracks: [
+      pP([1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], 1.3),
+      pP([0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.8),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.9),
+      pP([0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0], 0.7),
+      pP([0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0], 0.85),
+      pP([0,0,0,1, 0,1,0,0, 0,0,0,1, 0,1,0,0], 0.6),
+      pP([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], 0.55),
+      pP([1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], 0.7)
+    ]
   }
 };
 
@@ -639,6 +850,7 @@ export class StudioStoreService {
       clearInterval(this.timerID);
       this.timerID = null;
     }
+    audioEngineInstance.stopAllSounds();
     this.emit();
   }
 
@@ -649,6 +861,7 @@ export class StudioStoreService {
       this.timerID = null;
     }
     this.currentStep = 0;
+    audioEngineInstance.stopAllSounds();
     this.emit();
   }
 
@@ -833,9 +1046,15 @@ export class StudioStoreService {
     const p = EDM_GENRE_PRESETS[genreName];
     if (!p) return;
 
+    const famous = FAMOUS_EDM_SONGS[genreName] || {
+      title: genreName,
+      bpm: p.bpm,
+      description: p.description
+    };
+
     // Update Project Beat setting
-    this.project.bpm = p.bpm;
-    this.bpm = p.bpm;
+    this.project.bpm = famous.bpm;
+    this.bpm = famous.bpm;
 
     this.project.drumTracks.forEach((track, tid) => {
       const pTrackSteps = p.tracks[tid] || [];
@@ -849,26 +1068,56 @@ export class StudioStoreService {
       });
     });
 
-    // Preset lead synths setup to guarantee harmonious notes
-    if (genreName === 'Future Bass') {
-      this.project.leadSynth.oscType = 'sawtooth';
-      this.project.leadSynth.unisonVoices = 5;
-      this.project.leadSynth.detune = 35;
-      this.project.leadSynth.filterCutoff = 800;
-      this.project.fxSettings.reverb.wet = 0.35;
-      this.project.fxSettings.delay.wet = 0.3;
-    } else if (genreName === 'Hardstyle') {
-      this.project.fxSettings.distortion.drive = 0.5;
-      this.project.fxSettings.distortion.wet = 0.3;
-      this.project.bassSynth.distortion = 0.8;
-    } else {
-      this.project.fxSettings.distortion.drive = 0.15;
-      this.project.fxSettings.distortion.wet = 0.05;
-      this.project.bassSynth.distortion = 0.25;
+    const bass = this.project.bassSynth;
+    const lead = this.project.leadSynth;
+    const fx = this.project.fxSettings;
+
+    // Default clean states
+    bass.steps = Array(16).fill(null).map(() => ({ active: false, note: 'C', octave: 2, length: 1 }));
+    lead.steps = Array(32).fill(null).map(() => ({ active: false, note: 'C', octave: 4, velocity: 0.8, length: 1 }));
+    this.project.chordSteps = Array(16).fill(null).map(() => ({ active: false, padId: null }));
+
+    // Load custom bass settings & steps
+    if (famous.bassSettings) {
+      Object.assign(bass, famous.bassSettings);
+    }
+    if (famous.bassSteps) {
+      bass.steps = expandBassSteps(famous.bassSteps);
+    }
+
+    // Load custom lead settings & steps
+    if (famous.leadSettings) {
+      Object.assign(lead, famous.leadSettings);
+    }
+    if (famous.leadSteps) {
+      lead.steps = expandLeadSteps(famous.leadSteps);
+    }
+
+    // Load custom chords
+    if (famous.chordSteps) {
+      this.project.chordSteps = expandChordSteps(famous.chordSteps);
+    }
+
+    // Default master FX adjustments
+    fx.distortion.drive = 0.15;
+    fx.distortion.wet = 0.05;
+    fx.reverb.wet = 0.25;
+    fx.delay.wet = 0.2;
+    fx.sidechain.amount = 0.6;
+
+    // Sidechain defaults for high-ducking genres
+    if (['House', 'Trance', 'Future Bass', 'Hardstyle', 'Psytrance', 'Big Room', 'Progressive House', 'Eurodance', 'Future House', 'Anthem Trance', 'Tech House', 'Electro Classic', 'Filter Disco House', 'Festival Progressive', 'Emotional UK House', 'Italo Dance', 'Dancefloor DnB', 'Hardstyle Anthem'].includes(genreName)) {
+      fx.sidechain.amount = 0.85;
+      fx.reverb.wet = 0.35;
+    }
+    if (['Techno', 'Acid Techno', 'Cyberpunk', 'Phonk', 'Peak Techno', 'Hardstyle Anthem', 'Rumble Bass'].includes(genreName)) {
+      fx.distortion.drive = 0.55;
+      fx.distortion.wet = 0.2;
     }
 
     audioEngineInstance.syncState(this.project);
     this.emit();
+    this.saveToLocalStorage();
   }
 
   // Project Clear and Random generator patterns
