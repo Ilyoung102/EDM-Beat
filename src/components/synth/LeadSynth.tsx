@@ -152,6 +152,8 @@ export default function LeadSynth() {
                 { label: '⚡ PULSE WAVE', value: 'pulse' },
                 { label: '🌌 SUPERSAW', value: 'supersaw' },
                 { label: '🔔 METALLIC', value: 'metallic' },
+                { label: '🎸 GUITAR', value: 'guitar' },
+                { label: '🎹 PIANO', value: 'piano' },
               ]}
               value={lead.oscType}
               onChange={(e) => actions.updateLeadSynth('oscType', e.target.value as any)}

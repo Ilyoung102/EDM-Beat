@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type OscType = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'pulse' | 'supersaw' | 'metallic';
+export type OscType = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'pulse' | 'supersaw' | 'metallic' | 'guitar' | 'piano';
 
 export interface EnvelopeSettings {
   attack: number; // seconds

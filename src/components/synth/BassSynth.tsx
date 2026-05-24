@@ -161,6 +161,8 @@ export default function BassSynth() {
                 { label: '⚡ PULSE WAVE', value: 'pulse' },
                 { label: '🌌 SUPERSAW', value: 'supersaw' },
                 { label: '🔔 METALLIC', value: 'metallic' },
+                { label: '🎸 GUITAR', value: 'guitar' },
+                { label: '🎹 PIANO', value: 'piano' },
               ]}
               value={bass.oscType}
               onChange={(e) => actions.updateBassSynth('oscType', e.target.value as any)}

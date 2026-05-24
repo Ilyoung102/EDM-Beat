@@ -213,7 +213,7 @@ export class AudioEngine {
 
       // Master routing behavior
       if (cid === 'master') {
-        p.connect(this.masterFilter!);
+        // Master fader handles sum processing at the end of init()
       } else if (cid === 'kick' || cid === 'snare' || cid === 'hats' || cid === 'perc') {
         // Drums go to Drum Bus gain, not master directly (unless customized, but routing to bus provides dynamic sidechain and glue)
         // We will connect them to the 'drum_bus' channel input once created or after loop
@@ -242,6 +242,14 @@ export class AudioEngine {
     this.channels['drum_bus'].panner.disconnect();
     this.channels['drum_bus'].panner.connect(this.masterFilter!);
     this.channels['drum_bus'].panner.connect(this.channelAnalyzers['drum_bus']);
+
+    // Route master summing fader through Master channel hardware Volume & Panning faders
+    this.postGain.disconnect();
+    this.postGain.connect(this.channels['master'].gain);
+
+    this.channels['master'].panner.disconnect();
+    this.channels['master'].panner.connect(this.masterAnalyzer);
+    this.channels['master'].panner.connect(this.channelAnalyzers['master']);
   }
 
   public resume() {
@@ -297,17 +305,17 @@ export class AudioEngine {
 
   private updateDistortionCurve(drive: number) {
     if (!this.waveShaper) return;
-    if (drive <= 0) {
+    if (drive <= 0.001) {
       this.waveShaper.curve = null;
       return;
     }
-    const k = typeof drive === 'number' ? drive * 80 : 50;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
-    const deg = Math.PI / 180;
+    const scale = Math.max(0.5, drive * 5); // saturation scale index
+    const norm = Math.tanh(scale);
     for (let i = 0; i < n_samples; ++i) {
       const x = (i * 2) / n_samples - 1;
-      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+      curve[i] = Math.tanh(scale * x) / norm;
     }
     this.waveShaper.curve = curve;
   }
@@ -371,8 +379,8 @@ export class AudioEngine {
     state.mixerChannels.forEach(c => {
       const channel = this.channels[c.id];
       if (channel) {
-        // Gain safety scaling to provide headroom and prevent master clipping
-        const gainScale = c.id === 'master' ? 0.70 : 0.60;
+        // Gain safety scaling to provide headroom and prevent master clipping under summation
+        const gainScale = c.id === 'master' ? 0.75 : 0.33;
         const val = c.mute ? 0 : c.volume * gainScale;
         channel.gain.gain.setValueAtTime(val, now);
         channel.panner.pan.setValueAtTime(c.pan, now);
@@ -713,6 +721,88 @@ export class AudioEngine {
       
       ringer.start(time);
       secondaryOscs.push(ringer);
+    } else if (settings.oscType === 'guitar') {
+      // FM synthesis model of an acoustic/electric guitar metal string pluck
+      osc.type = 'triangle';
+      
+      const modulator = ctx.createOscillator();
+      modulator.type = 'sine';
+      // Modulator frequency is twice the carrier frequency for bright string harmonics
+      modulator.frequency.setValueAtTime(freq * 2, time);
+      
+      const modGain = ctx.createGain();
+      // Peak FM modulation index (depth in Hz)
+      modGain.gain.setValueAtTime(freq * 1.5, time);
+      modGain.gain.exponentialRampToValueAtTime(0.01, time + 0.12); // fast decay of metallic transient
+      
+      modulator.connect(modGain);
+      modGain.connect(osc.frequency);
+      
+      modulator.start(time);
+      modulator.stop(time + 0.15);
+      secondaryOscs.push(modulator);
+      
+      // Add a slight high-frequency acoustic pluck buzz/friction
+      const pluckFriction = ctx.createOscillator();
+      pluckFriction.type = 'sawtooth';
+      pluckFriction.frequency.setValueAtTime(freq * 4, time);
+      
+      const frictionGain = ctx.createGain();
+      frictionGain.gain.setValueAtTime(0.12, time);
+      frictionGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
+      
+      pluckFriction.connect(frictionGain);
+      frictionGain.connect(filter);
+      pluckFriction.start(time);
+      pluckFriction.stop(time + 0.04);
+      secondaryOscs.push(pluckFriction);
+    } else if (settings.oscType === 'piano') {
+      // Warm woody sine + triangle combination for dynamic piano model
+      osc.type = 'triangle';
+      
+      const pianoH1 = ctx.createOscillator();
+      pianoH1.type = 'sine';
+      pianoH1.frequency.setValueAtTime(freq * 2, time);
+      
+      const pianoGain1 = ctx.createGain();
+      pianoGain1.gain.setValueAtTime(0.3, time);
+      pianoGain1.gain.exponentialRampToValueAtTime(0.0001, time + Math.min(duration, 0.4));
+      
+      pianoH1.connect(pianoGain1);
+      pianoGain1.connect(filter);
+      pianoH1.start(time);
+      pianoH1.stop(time + Math.min(duration, 0.4) + 0.1);
+      secondaryOscs.push(pianoH1);
+
+      const pianoH2 = ctx.createOscillator();
+      pianoH2.type = 'sine';
+      pianoH2.frequency.setValueAtTime(freq * 3, time);
+      
+      const pianoGain2 = ctx.createGain();
+      pianoGain2.gain.setValueAtTime(0.15, time);
+      pianoGain2.gain.exponentialRampToValueAtTime(0.0001, time + Math.min(duration, 0.2));
+      
+      pianoH2.connect(pianoGain2);
+      pianoGain2.connect(filter);
+      pianoH2.start(time);
+      pianoH2.stop(time + Math.min(duration, 0.2) + 0.1);
+      secondaryOscs.push(pianoH2);
+
+      // Mallet hammer strike clicks
+      const click = ctx.createOscillator();
+      click.type = 'triangle';
+      click.frequency.setValueAtTime(1200, time);
+      click.frequency.exponentialRampToValueAtTime(150, time + 0.015);
+      
+      const clickGain = ctx.createGain();
+      clickGain.gain.setValueAtTime(0.25, time);
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.018);
+      
+      click.connect(clickGain);
+      clickGain.connect(filter);
+      click.start(time);
+      click.stop(time + 0.02);
+      secondaryOscs.push(click);
     } else {
       osc.type = settings.oscType as any;
     }
@@ -871,6 +961,88 @@ export class AudioEngine {
         modulator.start(time);
         modulator.stop(time + 0.25);
         oscs.push(modulator);
+      } else if (settings.oscType === 'guitar') {
+        osc.type = 'triangle';
+        
+        // FM modulator for string tension pluck ("twang")
+        const modulator = ctx.createOscillator();
+        modulator.type = 'sine';
+        modulator.frequency.setValueAtTime(freq * 2.0 + (detuneOffset * 0.1), time);
+        
+        const modGain = ctx.createGain();
+        modGain.gain.setValueAtTime(freq * 1.6, time);
+        modGain.gain.exponentialRampToValueAtTime(0.01, time + 0.14);
+        
+        modulator.connect(modGain);
+        modGain.connect(osc.frequency);
+        
+        modulator.start(time);
+        modulator.stop(time + 0.16);
+        oscs.push(modulator);
+
+        // Acoustic string friction transient
+        const pluckFriction = ctx.createOscillator();
+        pluckFriction.type = 'sawtooth';
+        pluckFriction.frequency.setValueAtTime(freq * 4, time);
+        
+        const frictionGain = ctx.createGain();
+        frictionGain.gain.setValueAtTime(0.08 / Math.sqrt(voiceCount), time);
+        frictionGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
+        
+        pluckFriction.connect(frictionGain);
+        frictionGain.connect(filter);
+        pluckFriction.start(time);
+        pluckFriction.stop(time + 0.04);
+        oscs.push(pluckFriction);
+      } else if (settings.oscType === 'piano') {
+        // Multi-harmonic additive synthesizer simulating real piano action
+        osc.type = 'triangle';
+        
+        const pianoH1 = ctx.createOscillator();
+        pianoH1.type = 'sine';
+        pianoH1.frequency.setValueAtTime(freq * 2, time);
+        pianoH1.detune.setValueAtTime(detuneOffset, time);
+        
+        const pGain1 = ctx.createGain();
+        pGain1.gain.setValueAtTime(0.24 / Math.sqrt(voiceCount), time);
+        pGain1.gain.exponentialRampToValueAtTime(0.0001, time + Math.min(duration, 0.45));
+        
+        pianoH1.connect(pGain1);
+        pGain1.connect(filter);
+        pianoH1.start(time);
+        pianoH1.stop(time + Math.min(duration, 0.45) + 0.15);
+        oscs.push(pianoH1);
+
+        const pianoH2 = ctx.createOscillator();
+        pianoH2.type = 'sine';
+        pianoH2.frequency.setValueAtTime(freq * 3, time);
+        pianoH2.detune.setValueAtTime(detuneOffset, time);
+        
+        const pGain2 = ctx.createGain();
+        pGain2.gain.setValueAtTime(0.12 / Math.sqrt(voiceCount), time);
+        pGain2.gain.exponentialRampToValueAtTime(0.0001, time + Math.min(duration, 0.25));
+        
+        pianoH2.connect(pGain2);
+        pGain2.connect(filter);
+        pianoH2.start(time);
+        pianoH2.stop(time + Math.min(duration, 0.25) + 0.15);
+        oscs.push(pianoH2);
+
+        // Felt hammer mallet hit sound
+        const mallet = ctx.createOscillator();
+        mallet.type = 'triangle';
+        mallet.frequency.setValueAtTime(1400, time);
+        mallet.frequency.exponentialRampToValueAtTime(160, time + 0.015);
+        
+        const malletGain = ctx.createGain();
+        malletGain.gain.setValueAtTime(0.18 / Math.sqrt(voiceCount), time);
+        malletGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.018);
+        
+        mallet.connect(malletGain);
+        malletGain.connect(filter);
+        mallet.start(time);
+        mallet.stop(time + 0.02);
+        oscs.push(mallet);
       } else {
         osc.type = settings.oscType as any;
       }
