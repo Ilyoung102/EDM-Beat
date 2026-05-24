@@ -735,7 +735,7 @@ export class StudioStoreService {
       envelope: { attack: 0.02, decay: 0.15, sustain: 0.6, release: 0.2 },
       glide: 0.05,
       distortion: 0.05,
-      steps: Array(16).fill(null).map((_, i) => ({
+      steps: Array(32).fill(null).map((_, i) => ({
         active: i % 4 === 2,
         note: i % 8 === 2 ? 'C' : 'G',
         octave: 1,
@@ -970,10 +970,11 @@ export class StudioStoreService {
       audioEngineInstance.playBassNote(time, bStep.note, bStep.octave, duration, bass);
     }
 
-    // 3.5 Sub Synth (16 steps sequencer, syncs sound warmth between Bass and Lead)
+    // 3.5 Sub Synth (syncs sound warmth between Bass and Lead)
     const sub = this.project.subSynth;
-    if (sub && sub.steps[bassStepIndex] && sub.steps[bassStepIndex].active) {
-      const sStep = sub.steps[bassStepIndex];
+    const subStepIndex = step % this.project.patternLength;
+    if (sub && sub.steps[subStepIndex] && sub.steps[subStepIndex].active) {
+      const sStep = sub.steps[subStepIndex];
       const duration = (60.0 / this.bpm) * 0.25 * sStep.length;
       audioEngineInstance.playSubNote(time, sStep.note, sStep.octave, duration, sub);
     }
@@ -1172,7 +1173,7 @@ export class StudioStoreService {
     this.project.bassSynth.steps = Array(16).fill(null).map(() => ({
       active: false, note: 'C', octave: 2, length: 1
     }));
-    this.project.subSynth.steps = Array(16).fill(null).map(() => ({
+    this.project.subSynth.steps = Array(32).fill(null).map(() => ({
       active: false, note: 'C', octave: 1, length: 1
     }));
     this.project.leadSynth.steps = Array(32).fill(null).map(() => ({
@@ -1202,7 +1203,7 @@ export class StudioStoreService {
       length: Math.random() < 0.3 ? 2 : 1
     }));
 
-    this.project.subSynth.steps = Array(16).fill(null).map(() => ({
+    this.project.subSynth.steps = Array(32).fill(null).map(() => ({
       active: Math.random() < 0.4,
       note: scales[Math.floor(Math.random() * scales.length)],
       octave: 1,
