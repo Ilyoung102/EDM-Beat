@@ -426,7 +426,7 @@ export class AudioEngine {
     osc.frequency.setValueAtTime(140, time);
     osc.frequency.exponentialRampToValueAtTime(45, time + 0.12);
 
-    const kickVol = velocity * 1.1;
+    const kickVol = velocity * 1.5;
     gainNode.gain.setValueAtTime(0, time);
     gainNode.gain.linearRampToValueAtTime(kickVol, time + 0.003); // punchy click start
     gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.25); // decay trail
@@ -452,7 +452,7 @@ export class AudioEngine {
     noiseFilter.Q.value = 1.3;
 
     const noiseGain = ctx.createGain();
-    const snrVol = velocity * 0.65;
+    const snrVol = velocity * 0.95;
     noiseGain.gain.setValueAtTime(snrVol, time);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
 
@@ -467,7 +467,7 @@ export class AudioEngine {
     snapOsc.frequency.setValueAtTime(175, time);
     snapOsc.frequency.exponentialRampToValueAtTime(95, time + 0.08);
 
-    snapGain.gain.setValueAtTime(velocity * 0.4, time);
+    snapGain.gain.setValueAtTime(velocity * 0.6, time);
     snapGain.gain.exponentialRampToValueAtTime(0.001, time + 0.09);
 
     snapOsc.connect(snapGain);
@@ -497,7 +497,7 @@ export class AudioEngine {
         filter.Q.value = 1.8;
 
         const gain = ctx.createGain();
-        const burstVolume = velocity * (0.4 + 0.2 * i); // final burst gets loudest
+        const burstVolume = velocity * (0.6 + 0.3 * i); // final burst gets loudest
         const triggerTime = time + i * interval;
 
         gain.gain.setValueAtTime(burstVolume, triggerTime);
@@ -524,7 +524,7 @@ export class AudioEngine {
     filter.frequency.value = 8500;
 
     const gainNode = ctx.createGain();
-    gainNode.gain.setValueAtTime(velocity * 0.25, time);
+    gainNode.gain.setValueAtTime(velocity * 0.38, time);
     const decay = isOpen ? 0.28 : 0.05;
     gainNode.gain.exponentialRampToValueAtTime(0.001, time + decay);
 
@@ -550,7 +550,7 @@ export class AudioEngine {
     osc.frequency.setValueAtTime(450, time);
     osc.frequency.linearRampToValueAtTime(220, time + 0.08);
 
-    gainNode.gain.setValueAtTime(velocity * 0.4, time);
+    gainNode.gain.setValueAtTime(velocity * 0.6, time);
     gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
 
     osc.start(time);
@@ -562,7 +562,7 @@ export class AudioEngine {
     const ctx = this.ctx;
     // Metallic splash using combined high frequencies of square oscillators
     const frequencies = [3500, 4200, 5600, 8000];
-    const gainTerm = velocity * 0.08;
+    const gainTerm = velocity * 0.13;
 
     frequencies.forEach(f => {
       const osc = ctx.createOscillator();
@@ -606,7 +606,7 @@ export class AudioEngine {
     filter.frequency.exponentialRampToValueAtTime(200, time + 1.0);
     filter.Q.value = 5.0;
 
-    gain.gain.setValueAtTime(velocity * 0.25, time);
+    gain.gain.setValueAtTime(velocity * 0.4, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 1.25);
 
     osc.start(time);

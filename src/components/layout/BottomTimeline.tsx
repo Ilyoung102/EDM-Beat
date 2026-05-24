@@ -75,12 +75,11 @@ export default function BottomTimeline() {
         </div>
       </div>
 
-      {/* Master Volume bar & presets block */}
-      <div className="flex flex-wrap items-center gap-4">
-        {/* Master Volume Slider */}
-        <div className="flex items-center gap-2 bg-slate-900/60 p-2 py-1.5 px-3 rounded-lg border border-slate-850">
+      {/* Master Volume bar & macro buttons block */}
+      <div className="flex items-center gap-2.5 bg-slate-900/60 p-1.5 px-3 rounded-xl border border-slate-850 select-none flex-nowrap" id="master-vol-and-macro-line">
+        <div className="flex items-center gap-2">
           <Volume2 size={13} className="text-cyan-400 shrink-0" />
-          <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase select-none shrink-0">
+          <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase select-none shrink-0 hidden sm:inline">
             MASTER VOL
           </span>
           <input
@@ -90,25 +89,29 @@ export default function BottomTimeline() {
             step="0.01"
             value={masterVolume}
             onChange={(e) => actions.updateMixerChannel('master', 'volume', parseFloat(e.target.value))}
-            className="w-20 md:w-28 accent-cyan-400 cursor-pointer h-1 bg-slate-850 rounded"
+            className="w-16 sm:w-24 md:w-28 accent-cyan-400 cursor-pointer h-1 bg-slate-850 rounded"
             title={`Master Volume: ${Math.round(masterVolume * 100)}%`}
           />
-          <span className="text-[9px] font-mono text-cyan-400 font-bold w-10 text-right select-none">
+          <span className="text-[9px] font-mono text-cyan-400 font-bold w-8 text-right select-none">
             {Math.round(masterVolume * 100)}%
           </span>
         </div>
 
+        <div className="h-5 w-[1px] bg-slate-800 shrink-0" />
+
         {/* Quick macro action presets selectors */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={actions.generateRandomPatterns}
-            className="px-3 py-2 bg-slate-900 border border-slate-800 font-mono text-[9px] text-slate-300 rounded hover:border-cyan-500 hover:text-cyan-400 transform active:scale-95 transition"
+            className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-300 rounded hover:border-cyan-500 hover:text-cyan-400 font-bold font-mono text-[9px] transform active:scale-95 transition cursor-pointer select-none whitespace-nowrap"
+            title="Mutate EDM patterns"
           >
             🎲 MUTATE
           </button>
           <button
             onClick={actions.clearAllPatterns}
-            className="px-3 py-2 bg-slate-900 border border-slate-800 font-mono text-[9px] text-slate-300 rounded hover:border-rose-500 hover:text-rose-400 transform active:scale-95 transition"
+            className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-300 rounded hover:border-rose-500 hover:text-rose-400 font-bold font-mono text-[9px] transform active:scale-95 transition cursor-pointer select-none whitespace-nowrap"
+            title="Clear all sequences"
           >
             🗑️ CLEAR
           </button>

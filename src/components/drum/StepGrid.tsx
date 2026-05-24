@@ -117,20 +117,8 @@ export default function StepGrid() {
                 </button>
               </div>
 
-              {/* Mini Pan / Vol Knob Replaced with High Contrast Volume Zoom Button */}
+              {/* Mini Pan / Vol Knob */}
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => actions.openVolumeEdit('drum', track.id, track.name, track.volume)}
-                  className="w-8 h-8 rounded-lg bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/50 flex items-center justify-center text-cyan-400 group relative transition-all active:scale-95 cursor-pointer"
-                  title="Zoom Track Volume (Giant 300% Fader)"
-                  id={`drum-track-zoom-btn-${track.id}`}
-                >
-                  <Volume2 size={14} className="group-hover:scale-110 transition-transform animate-pulse" />
-                  <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
-                  </span>
-                </button>
                 <div className="scale-75 origin-right hidden sm:block">
                   <Knob
                     min={0.0}
