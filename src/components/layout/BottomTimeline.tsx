@@ -6,14 +6,16 @@
 import React from 'react';
 import { useStudioState } from '../../store/useStudioStore';
 import LED from '../common/LED';
+import { Volume2 } from 'lucide-react';
 
 export default function BottomTimeline() {
   const { state, actions } = useStudioState();
 
   const len = state.project.patternLength;
+  const masterVolume = state.project.mixerChannels.find(m => m.id === 'master')?.volume ?? 0.95;
 
   return (
-    <footer className="border-t border-slate-800 bg-slate-950 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 select-none shrink-0" id="bottom-timeline-layout">
+    <footer className="border-t border-slate-800 bg-slate-950 px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-4 select-none shrink-0" id="bottom-timeline-layout">
       {/* Pattern length toggle slider */}
       <div className="flex items-center gap-4 bg-slate-900/60 p-2.5 rounded-xl border border-slate-850">
         <span className="text-[10px] font-mono tracking-widest text-slate-500 uppercase">
@@ -40,7 +42,7 @@ export default function BottomTimeline() {
       </div>
 
       {/* Visual Step Playhead tracker lights */}
-      <div className="flex-1 max-w-2xl px-4 hidden md:flex flex-col items-center gap-2">
+      <div className="flex-1 max-w-xl px-4 hidden md:flex flex-col items-center gap-2">
         <div className="flex items-center justify-between w-full">
           <span className="text-[8px] font-mono tracking-widest text-slate-500 uppercase">LIVE MATRIX PLAYHEAD</span>
           <span className="text-[9px] font-mono text-cyan-400 font-bold">
@@ -63,7 +65,7 @@ export default function BottomTimeline() {
                 <div key={i} className="flex flex-col items-center gap-1">
                   <LED active={isActive} color={ledColor} size="xs" />
                   <div
-                    className={`w-1.5 h-1 rounded ${
+                     className={`w-1.5 h-1 rounded ${
                       isActive ? 'bg-cyan-400' : isBeat ? 'bg-slate-700' : 'bg-slate-800'
                     }`}
                   />
@@ -73,20 +75,44 @@ export default function BottomTimeline() {
         </div>
       </div>
 
-      {/* Quick macro action presets selectors */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={actions.generateRandomPatterns}
-          className="px-3.5 py-1.5 bg-slate-900 border border-slate-700 font-mono text-[10px] text-slate-300 rounded-lg hover:border-cyan-500 hover:text-cyan-400 transform active:scale-95 transition"
-        >
-          🎲 MUTATE (RANDOM)
-        </button>
-        <button
-          onClick={actions.clearAllPatterns}
-          className="px-3.5 py-1.5 bg-slate-900 border border-slate-700 font-mono text-[10px] text-slate-300 rounded-lg hover:border-rose-500 hover:text-rose-400 transform active:scale-95 transition"
-        >
-          🗑️ CLEAR ALL
-        </button>
+      {/* Master Volume bar & presets block */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Master Volume Slider */}
+        <div className="flex items-center gap-2 bg-slate-900/60 p-2 py-1.5 px-3 rounded-lg border border-slate-850">
+          <Volume2 size={13} className="text-cyan-400 shrink-0" />
+          <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase select-none shrink-0">
+            MASTER VOL
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="1.2"
+            step="0.01"
+            value={masterVolume}
+            onChange={(e) => actions.updateMixerChannel('master', 'volume', parseFloat(e.target.value))}
+            className="w-20 md:w-28 accent-cyan-400 cursor-pointer h-1 bg-slate-850 rounded"
+            title={`Master Volume: ${Math.round(masterVolume * 100)}%`}
+          />
+          <span className="text-[9px] font-mono text-cyan-400 font-bold w-10 text-right select-none">
+            {Math.round(masterVolume * 100)}%
+          </span>
+        </div>
+
+        {/* Quick macro action presets selectors */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={actions.generateRandomPatterns}
+            className="px-3 py-2 bg-slate-900 border border-slate-800 font-mono text-[9px] text-slate-300 rounded hover:border-cyan-500 hover:text-cyan-400 transform active:scale-95 transition"
+          >
+            🎲 MUTATE
+          </button>
+          <button
+            onClick={actions.clearAllPatterns}
+            className="px-3 py-2 bg-slate-900 border border-slate-800 font-mono text-[9px] text-slate-300 rounded hover:border-rose-500 hover:text-rose-400 transform active:scale-95 transition"
+          >
+            🗑️ CLEAR
+          </button>
+        </div>
       </div>
     </footer>
   );

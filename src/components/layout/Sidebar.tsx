@@ -26,7 +26,7 @@ export default function Sidebar() {
 
   return (
     <aside 
-      className={`fixed md:relative top-0 bottom-0 left-0 h-full max-h-screen z-40 bg-slate-950 border-r border-slate-800 select-none p-4 flex flex-col justify-between shrink-0 overflow-y-auto pb-16 transition-all duration-300 ${
+      className={`fixed md:relative top-0 bottom-0 left-0 h-full max-h-screen z-[60] bg-slate-950 border-r border-slate-800 select-none p-4 flex flex-col justify-between shrink-0 overflow-y-auto pb-16 transition-all duration-300 ${
         isOpen 
           ? 'translate-x-0 w-64 opacity-100 shadow-2xl md:shadow-none' 
           : '-translate-x-full md:hidden w-0 opacity-0 border-r-0 p-0 pointer-events-none'

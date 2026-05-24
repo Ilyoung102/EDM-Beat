@@ -18,6 +18,12 @@ export default function TopTransport() {
   const meterInterval = useRef<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isVaultOpen, setIsVaultOpen] = useState(false);
+  const [localBpmStr, setLocalBpmStr] = useState(state.bpm.toString());
+
+  // Sync state BPM with typed local text
+  useEffect(() => {
+    setLocalBpmStr(state.bpm.toString());
+  }, [state.bpm]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -127,11 +133,22 @@ export default function TopTransport() {
   }, [state.isPlaying]);
 
   const handleBpmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = parseInt(e.target.value);
-    if (!isNaN(val)) {
-      val = Math.max(40, Math.min(240, val));
-      actions.updateProjectField('bpm', val);
+    const rawValue = e.target.value;
+    setLocalBpmStr(rawValue);
+    const parsed = parseInt(rawValue, 10);
+    if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
+      actions.updateProjectField('bpm', parsed);
     }
+  };
+
+  const handleBpmBlur = () => {
+    let parsed = parseInt(localBpmStr, 10);
+    if (isNaN(parsed)) {
+      parsed = 120;
+    }
+    const clamped = Math.max(40, Math.min(240, parsed));
+    setLocalBpmStr(clamped.toString());
+    actions.updateProjectField('bpm', clamped);
   };
 
   // Convert dB peak limit (-60 to 0) into grid bars count
@@ -160,9 +177,14 @@ export default function TopTransport() {
             <span className="text-black font-bold text-sm tracking-tighter">EDM</span>
           </div>
           <div>
-            <h1 className="text-sm font-sans font-semibold tracking-tighter text-white">
-              EDM Beat Studio
-            </h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-sans font-semibold tracking-tighter text-white">
+                EDM Beat Studio
+              </h1>
+              <span className="px-1.5 py-0.5 rounded text-[8.5px] font-mono leading-none bg-cyan-950 text-cyan-400 border border-cyan-500/30 font-bold select-none tracking-tight">
+                v1.2.0-PRO
+              </span>
+            </div>
             <p className="text-[9px] font-mono tracking-widest text-[#22d3ee] uppercase">
               pro pocket rack
             </p>
@@ -343,17 +365,39 @@ export default function TopTransport() {
         <div className="h-6 w-[1px] bg-slate-800 mx-1" />
 
         {/* BPM & Metronome deck */}
-        <div className="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded-lg border border-slate-850">
-          <div className="flex flex-col">
-            <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest leading-none mb-0.5">tempo</span>
+        <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-850">
+          <button 
+            onClick={() => {
+              const prev = Math.max(40, state.bpm - 1);
+              actions.updateProjectField('bpm', prev);
+            }}
+            className="w-4 h-4 flex items-center justify-center rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850 text-[10px] font-bold font-mono cursor-pointer transition select-none"
+            title="Decrease BPM"
+          >
+            -
+          </button>
+          <div className="flex flex-col items-center px-1">
+            <span className="text-[7.5px] font-mono text-slate-500 uppercase tracking-widest leading-none mb-0.5">tempo</span>
             <input
-              type="number"
-              value={state.bpm}
+              type="text"
+              pattern="[0-9]*"
+              value={localBpmStr}
               onChange={handleBpmChange}
-              className="w-11 bg-transparent font-mono text-xs text-cyan-400 font-bold focus:outline-none border-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              onBlur={handleBpmBlur}
+              className="w-9 bg-transparent font-mono text-xs text-cyan-400 font-bold focus:outline-none border-none p-0 text-center"
             />
           </div>
-          <span className="text-[10px] font-mono text-slate-600">BPM</span>
+          <span className="text-[9px] font-mono text-slate-600 select-none mr-1">BPM</span>
+          <button 
+            onClick={() => {
+              const next = Math.min(240, state.bpm + 1);
+              actions.updateProjectField('bpm', next);
+            }}
+            className="w-4 h-4 flex items-center justify-center rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850 text-[10px] font-bold font-mono cursor-pointer transition select-none"
+            title="Increase BPM"
+          >
+            +
+          </button>
         </div>
 
         {/* Swing percentage control */}

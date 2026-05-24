@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStudioState } from '../../store/useStudioStore';
 import TopTransport from './TopTransport';
 import Sidebar from './Sidebar';
@@ -24,6 +24,20 @@ import ProjectPanel from '../project/ProjectPanel';
 
 export default function AppShell() {
   const { state, actions } = useStudioState();
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        // Prevent double overlays from simultaneously occupying both sides of narrow screens
+        if (state.sidebarOpen && state.inspectorOpen) {
+          actions.toggleInspector();
+        }
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, [state.sidebarOpen, state.inspectorOpen]);
 
   const renderActiveTab = () => {
     switch (state.activeTab) {
@@ -58,7 +72,7 @@ export default function AppShell() {
         {/* Left Side menu backdrop */}
         {state.sidebarOpen && (
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-[1px] z-30 md:hidden transition-opacity duration-300" 
+            className="fixed inset-0 bg-black/60 backdrop-blur-[1px] z-[55] md:hidden transition-opacity duration-300" 
             onClick={actions.toggleSidebar}
             id="sidebar-backdrop"
           />
@@ -101,7 +115,7 @@ export default function AppShell() {
         {/* Right side Inspector backdrop */}
         {state.inspectorOpen && (
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-[1px] z-30 md:hidden transition-opacity duration-300" 
+            className="fixed inset-0 bg-black/60 backdrop-blur-[1px] z-[55] md:hidden transition-opacity duration-300" 
             onClick={actions.toggleInspector}
             id="inspector-backdrop"
           />

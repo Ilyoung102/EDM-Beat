@@ -481,7 +481,7 @@ export default function RightInspector() {
 
   return (
     <aside 
-      className={`fixed md:relative top-0 bottom-0 right-0 h-full max-h-screen z-40 bg-slate-950 border-l border-slate-800 select-none p-4 flex flex-col shrink-0 overflow-y-auto pb-16 transition-all duration-300 ${
+      className={`fixed md:relative top-0 bottom-0 right-0 h-full max-h-screen z-[60] bg-slate-950 border-l border-slate-800 select-none p-4 flex flex-col shrink-0 overflow-y-auto pb-16 transition-all duration-300 ${
         isOpen 
           ? 'translate-x-0 w-60 opacity-100 shadow-2xl md:shadow-none' 
           : 'translate-x-full md:hidden w-0 opacity-0 border-l-0 p-0 pointer-events-none'

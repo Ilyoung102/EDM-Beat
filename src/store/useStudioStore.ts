@@ -666,11 +666,17 @@ export class StudioStoreService {
 
   public toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
+    if (this.sidebarOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      this.inspectorOpen = false;
+    }
     this.emit();
   }
 
   public toggleInspector() {
     this.inspectorOpen = !this.inspectorOpen;
+    if (this.inspectorOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      this.sidebarOpen = false;
+    }
     this.emit();
   }
   
@@ -780,6 +786,10 @@ export class StudioStoreService {
   constructor() {
     this.loadFromLocalStorage();
     this.applyPreset('House'); // Load Default House Beat!
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      this.sidebarOpen = false;
+      this.inspectorOpen = false;
+    }
   }
 
   public subscribe(listener: () => void) {
@@ -793,6 +803,10 @@ export class StudioStoreService {
 
   public setTab(tab: string) {
     this.activeTab = tab;
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      this.sidebarOpen = false;
+      this.inspectorOpen = false;
+    }
     this.emit();
   }
 

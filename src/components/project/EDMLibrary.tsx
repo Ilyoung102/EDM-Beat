@@ -89,15 +89,46 @@ export default function EDMLibrary() {
         // Play the kick for rhythm stamp
         audioEngineInstance.playKick(now, 1.0);
         
+        // Find representative notes for this specific preset
+        const famousSong = FAMOUS_EDM_SONGS[name];
+        
+        let previewBassNote = 'C';
+        let previewBassOctave = 2;
+        if (famousSong && famousSong.bassSteps && famousSong.bassSteps.length > 0) {
+          const firstBass = famousSong.bassSteps.find(step => step[1] && step[1] !== '');
+          if (firstBass) {
+            previewBassNote = firstBass[1];
+            previewBassOctave = firstBass[2] !== undefined ? firstBass[2] : 2;
+          }
+        } else {
+          // Fallback based on name hash to ensure fallback has mathematical note variation
+          const notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+          const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          previewBassNote = notes[hash % notes.length];
+          previewBassOctave = 2 + (hash % 2); // octave 2 or 3
+        }
+
         // Play a representative deep bass synth note
         const bassSynth = state.project.bassSynth;
         if (bassSynth) {
-          audioEngineInstance.playBassNote(now + 0.05, 'C', 2, 0.45, bassSynth);
+          audioEngineInstance.playBassNote(now + 0.05, previewBassNote, previewBassOctave, 0.45, bassSynth);
         }
         
         // Play a warm lush chords pad progression chord
-        if (state.project.chordPads && state.project.chordPads.length > 0) {
-          audioEngineInstance.playChordPad(now + 0.1, state.project.chordPads[0], 1.2);
+        let previewChordPad = state.project.chordPads?.[0] || null;
+        if (famousSong && famousSong.chordSteps && famousSong.chordSteps.length > 0) {
+          const firstChordStep = famousSong.chordSteps.find(step => step[1] && step[1].startsWith('pad'));
+          if (firstChordStep) {
+            const stepPadId = firstChordStep[1];
+            const found = state.project.chordPads?.find(p => p.id === stepPadId);
+            if (found) {
+              previewChordPad = found;
+            }
+          }
+        }
+        
+        if (previewChordPad) {
+          audioEngineInstance.playChordPad(now + 0.1, previewChordPad, 1.2);
         }
       }
     }, 80);
