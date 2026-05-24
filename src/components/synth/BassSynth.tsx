@@ -65,13 +65,48 @@ export default function BassSynth() {
       actions.updateBassSynth('filterCutoff', 450);
       actions.updateBassSynth('filterResonance', 4.5);
       actions.updateBassSynth('envelope', { attack: 0.005, decay: 0.1, sustain: 0.4, release: 0.1 });
+    } else if (presetName === 'pulse-growler') {
+      actions.updateBassSynth('oscType', 'pulse');
+      actions.updateBassSynth('distortion', 0.6);
+      actions.updateBassSynth('filterCutoff', 220);
+      actions.updateBassSynth('filterResonance', 5.5);
+      actions.updateBassSynth('envelope', { attack: 0.004, decay: 0.14, sustain: 0.35, release: 0.12 });
+    } else if (presetName === 'supersaw-bass') {
+      actions.updateBassSynth('oscType', 'supersaw');
+      actions.updateBassSynth('distortion', 0.35);
+      actions.updateBassSynth('filterCutoff', 380);
+      actions.updateBassSynth('filterResonance', 4.0);
+      actions.updateBassSynth('envelope', { attack: 0.008, decay: 0.2, sustain: 0.5, release: 0.15 });
+    } else if (presetName === 'metallic-clang') {
+      actions.updateBassSynth('oscType', 'metallic');
+      actions.updateBassSynth('distortion', 0.15);
+      actions.updateBassSynth('filterCutoff', 550);
+      actions.updateBassSynth('filterResonance', 7.0);
+      actions.updateBassSynth('envelope', { attack: 0.002, decay: 0.06, sustain: 0.2, release: 0.1 });
     }
+  };
+
+  const handleAutoBassGen = () => {
+    const scales = ['C', 'D', 'E', 'F', 'G', 'A', 'A#', 'B'];
+    const selectedKey = scales[Math.floor(Math.random() * scales.length)];
+    const updatedSteps = Array(16).fill(null).map((_, i) => {
+      // Classic House/Trance rolling offbeat bass grooves or synco-breaks
+      const isOffbeat = i % 2 === 1;
+      const isActive = Math.random() < 0.65 ? isOffbeat : (i % 4 !== 0);
+      return {
+        active: isActive,
+        note: selectedKey,
+        octave: Math.random() < 0.35 ? 1 : 2,
+        length: 1
+      };
+    });
+    actions.updateBassSynth('steps', updatedSteps);
   };
 
   return (
     <div className="flex flex-col gap-6" id="bass-synth-panel">
       {/* 1. Header controls */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-850">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-850">
         <div>
           <h2 className="text-sm font-mono font-bold text-white tracking-widest uppercase flex items-center gap-2">
             <Zap className="text-fuchsia-400 animate-pulse" size={14} />
@@ -82,18 +117,31 @@ export default function BassSynth() {
           </p>
         </div>
 
-        {/* Quick bass presets */}
-        <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-lg border border-slate-850">
-          <span className="text-[8px] font-mono text-slate-500 uppercase px-2">BASS_TYPE:</span>
-          {['acid', 'wobble', 'deep', 'trance-bass'].map((pName) => (
-            <button
-              key={pName}
-              onClick={() => handlePresetSelect(pName)}
-              className="px-2 py-1 text-[9px] font-mono font-bold rounded bg-slate-900 text-slate-400 hover:text-fuchsia-400 hover:border hover:border-fuchsia-500 transition select-none uppercase shrink-0"
-            >
-              {pName.replace('-', ' ')}
-            </button>
-          ))}
+        {/* Quick bass presets and Auto Groove generator */}
+        <div className="flex flex-wrap items-center gap-3 bg-slate-950 p-2 rounded-xl border border-slate-850">
+          <div className="flex items-center gap-2 overflow-x-auto select-none">
+            <span className="text-[8px] font-mono text-slate-500 uppercase px-1 shrink-0">BASS_TYPE:</span>
+            {['acid', 'wobble', 'deep', 'trance-bass', 'pulse-growler', 'supersaw-bass', 'metallic-clang'].map((pName) => (
+              <button
+                key={pName}
+                onClick={() => handlePresetSelect(pName)}
+                className="px-2 py-1 text-[9px] font-mono font-bold rounded bg-slate-900 text-slate-400 hover:text-fuchsia-400 hover:border hover:border-fuchsia-500 transition select-none uppercase shrink-0 cursor-pointer"
+              >
+                {pName.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-5 w-[1px] bg-slate-850 hidden md:block" />
+
+          <button
+            onClick={handleAutoBassGen}
+            className="px-3 py-1 bg-fuchsia-950/40 border border-fuchsia-800 text-fuchsia-400 hover:bg-fuchsia-400 hover:text-slate-950 font-black font-mono text-[9px] rounded tracking-wide transition active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
+            title="Generate custom rolling EDM bass groove"
+          >
+            <Sparkles size={11} className="animate-pulse" />
+            ⚡ AUTO-GROOVE
+          </button>
         </div>
       </div>
 
@@ -110,6 +158,9 @@ export default function BassSynth() {
                 { label: '⬜ SQUARE', value: 'square' },
                 { label: '🔺 TRIANGLE', value: 'triangle' },
                 { label: '🟢 SINE WAVE', value: 'sine' },
+                { label: '⚡ PULSE WAVE', value: 'pulse' },
+                { label: '🌌 SUPERSAW', value: 'supersaw' },
+                { label: '🔔 METALLIC', value: 'metallic' },
               ]}
               value={bass.oscType}
               onChange={(e) => actions.updateBassSynth('oscType', e.target.value as any)}

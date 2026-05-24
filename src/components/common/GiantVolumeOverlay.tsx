@@ -13,6 +13,17 @@ export default function GiantVolumeOverlay() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   
+  // Close with the escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        actions.closeVolumeEdit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [actions]);
+
   if (!state.activeVolumeEdit) return null;
 
   const { type, id, name, volume } = state.activeVolumeEdit;
@@ -38,17 +49,6 @@ export default function GiantVolumeOverlay() {
       actions.closeVolumeEdit();
     }
   };
-
-  // Close with the escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        actions.closeVolumeEdit();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   return (
     <div

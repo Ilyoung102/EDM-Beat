@@ -56,6 +56,24 @@ export function getFrequencyForNote(noteName: string, octave: number): number {
   return baseFreq * Math.pow(2, octave);
 }
 
+// Pulse wave generator helper
+let cachedPulseWave: PeriodicWave | null = null;
+function getPulseWave(ctx: AudioContext): PeriodicWave {
+  if (cachedPulseWave) return cachedPulseWave;
+  const size = 64;
+  const real = new Float32Array(size);
+  const imag = new Float32Array(size);
+  const dutyCycle = 0.15; // sweet classic narrow pulse spot
+  real[0] = 0;
+  imag[0] = 0;
+  for (let n = 1; n < size; n++) {
+    real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * dutyCycle);
+    imag[n] = 0;
+  }
+  cachedPulseWave = ctx.createPeriodicWave(real, imag);
+  return cachedPulseWave;
+}
+
 export class AudioEngine {
   public ctx: AudioContext | null = null;
 
@@ -87,7 +105,7 @@ export class AudioEngine {
   private currentProjectState: StudioProject | null = null;
 
   // Active playing notes (for synth glide/envelope releases)
-  private activeBassOscs: { osc: OscillatorNode; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number; note: string }[] = [];
+  private activeBassOscs: { osc: OscillatorNode; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number; note: string; secondaryOscs?: OscillatorNode[] }[] = [];
   private activeLeadVoiceGroups: { oscs: OscillatorNode[]; gain: GainNode; stopTime: number; note: string }[] = [];
   private activeChordOscs: { oscs: OscillatorNode[]; subOsc: OscillatorNode | null; gain: GainNode; stopTime: number }[] = [];
 
@@ -242,6 +260,11 @@ export class AudioEngine {
           item.gain.disconnect();
           item.osc.disconnect();
           item.subOsc?.disconnect();
+          if (item.secondaryOscs) {
+            item.secondaryOscs.forEach(o => {
+              try { o.disconnect(); } catch (err) {}
+            });
+          }
         } catch (e) {}
         return false;
       }
@@ -647,9 +670,57 @@ export class AudioEngine {
     const filter = ctx.createBiquadFilter();
     const dist = ctx.createWaveShaper();
 
-    osc.type = settings.oscType;
+    const secondaryOscs: OscillatorNode[] = [];
+
+    if (settings.oscType === 'pulse') {
+      try {
+        osc.setPeriodicWave(getPulseWave(ctx));
+      } catch (e) {
+        osc.type = 'square';
+      }
+    } else if (settings.oscType === 'supersaw') {
+      osc.type = 'sawtooth';
+      osc.detune.setValueAtTime(settings.detune - 12, time);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(freq, time);
+      osc2.detune.setValueAtTime(settings.detune + 12, time);
+      osc2.connect(filter);
+      osc2.start(time);
+      secondaryOscs.push(osc2);
+
+      const osc3 = ctx.createOscillator();
+      osc3.type = 'sawtooth';
+      osc3.frequency.setValueAtTime(freq, time);
+      osc3.detune.setValueAtTime(settings.detune, time);
+      osc3.connect(filter);
+      osc3.start(time);
+      secondaryOscs.push(osc3);
+    } else if (settings.oscType === 'metallic') {
+      osc.type = 'triangle';
+      
+      const ringer = ctx.createOscillator();
+      ringer.type = 'sine';
+      ringer.frequency.setValueAtTime(freq * 2.83, time);
+      
+      const ringerGain = ctx.createGain();
+      ringerGain.gain.setValueAtTime(0.45, time);
+      ringerGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+      
+      ringer.connect(ringerGain);
+      ringerGain.connect(filter);
+      
+      ringer.start(time);
+      secondaryOscs.push(ringer);
+    } else {
+      osc.type = settings.oscType as any;
+    }
+
     osc.frequency.setValueAtTime(freq, time);
-    osc.detune.setValueAtTime(settings.detune, time);
+    if (settings.oscType !== 'supersaw') {
+      osc.detune.setValueAtTime(settings.detune, time);
+    }
 
     if (subOsc) {
       subOsc.type = 'sine';
@@ -707,12 +778,19 @@ export class AudioEngine {
       subOsc.stop(noteEndTime + env.release);
     }
 
+    secondaryOscs.forEach(o => {
+      try {
+        o.stop(noteEndTime + env.release);
+      } catch (err) {}
+    });
+
     this.activeBassOscs.push({
       osc,
       subOsc,
       gain: gainNode,
       stopTime: noteEndTime + env.release,
-      note: noteName
+      note: noteName,
+      secondaryOscs
     });
   }
 
@@ -759,14 +837,45 @@ export class AudioEngine {
 
     for (let i = 0; i < voiceCount; i++) {
       const osc = ctx.createOscillator();
-      osc.type = settings.oscType;
-      osc.frequency.setValueAtTime(freq, time);
 
       // Distribute detuned chorus width
       let detuneOffset = 0;
       if (voiceCount > 1) {
         detuneOffset = -spreadCents + (i / (voiceCount - 1)) * spreadCents * 2;
       }
+
+      if (settings.oscType === 'pulse') {
+        try {
+          osc.setPeriodicWave(getPulseWave(ctx));
+        } catch (e) {
+          osc.type = 'square';
+        }
+      } else if (settings.oscType === 'supersaw') {
+        osc.type = 'sawtooth';
+        detuneOffset = detuneOffset * 1.6; // wider spread
+      } else if (settings.oscType === 'metallic') {
+        osc.type = 'triangle';
+        
+        // Dynamic FM modulator per voice for gorgeous stereo bell sweep
+        const modulator = ctx.createOscillator();
+        modulator.type = 'sine';
+        modulator.frequency.setValueAtTime(freq * 3.14 + (detuneOffset * 0.1), time);
+        
+        const modGain = ctx.createGain();
+        modGain.gain.setValueAtTime(freq * 1.8, time);
+        modGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
+        
+        modulator.connect(modGain);
+        modGain.connect(osc.frequency);
+        
+        modulator.start(time);
+        modulator.stop(time + 0.25);
+        oscs.push(modulator);
+      } else {
+        osc.type = settings.oscType as any;
+      }
+
+      osc.frequency.setValueAtTime(freq, time);
       osc.detune.setValueAtTime(detuneOffset, time);
 
       osc.connect(filter);
@@ -905,6 +1014,14 @@ export class AudioEngine {
         if (item.subOsc) {
           item.subOsc.stop();
           item.subOsc.disconnect();
+        }
+        if (item.secondaryOscs) {
+          item.secondaryOscs.forEach(osc => {
+            try {
+              osc.stop();
+              osc.disconnect();
+            } catch (err) {}
+          });
         }
         item.gain.disconnect();
       } catch (e) {

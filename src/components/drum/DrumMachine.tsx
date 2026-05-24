@@ -20,6 +20,63 @@ export default function DrumMachine() {
     actions.applyPreset(genre);
   };
 
+  const handleAutoDrumGen = () => {
+    // Generate a professional 4-on-the-floor EDM house/progressive drum loop
+    state.project.drumTracks.forEach(t => {
+      const updatedSteps = Array(32).fill(0).map(() => ({ active: false, velocity: 1.0 }));
+      
+      for (let i = 0; i < 32; i++) {
+        const step16 = i % 16;
+        if (t.id === 'kick') {
+          // Kick on 1, 5, 9, 13
+          if (step16 === 0 || step16 === 4 || step16 === 8 || step16 === 12) {
+            updatedSteps[i] = { active: true, velocity: 1.0 };
+          }
+        } else if (t.id === 'clap' || t.id === 'snare') {
+          // Clap/Snare on step 5 and 13 (index 4 and 12)
+          if (t.id === 'clap' && (step16 === 4 || step16 === 12)) {
+            updatedSteps[i] = { active: true, velocity: 0.9 };
+          }
+          if (t.id === 'snare' && (step16 === 12 && Math.random() < 0.5)) {
+            // Accent snares or rolls on end of progression
+            updatedSteps[i] = { active: true, velocity: 0.85 };
+          }
+        } else if (t.id === 'hats_closed') {
+          // 8th or 16th hats
+          if (step16 % 2 === 0 && step16 % 4 !== 0) {
+            updatedSteps[i] = { active: true, velocity: 0.55 }; // off-beats closed hats
+          } else if (Math.random() < 0.25) {
+            updatedSteps[i] = { active: true, velocity: 0.4 }; // syncopated shaker-like fill
+          }
+        } else if (t.id === 'hats_open') {
+          // Classic offbeat open hat (index 2, 6, 10, 14 in 16-step matrix)
+          if (step16 === 2 || step16 === 6 || step16 === 10 || step16 === 14) {
+            updatedSteps[i] = { active: true, velocity: 0.75 };
+          }
+        } else if (t.id === 'ride') {
+          // Driving ride cymbal on every strong beat or offbeats for second phase of loop
+          if (i >= 16 && (step16 % 4 === 0)) {
+            updatedSteps[i] = { active: true, velocity: 0.6 };
+          }
+        } else if (t.id === 'perc') {
+          // Percussion rhythmic accents on odd frames
+          if (step16 === 3 || step16 === 10 || step16 === 11) {
+            updatedSteps[i] = { active: true, velocity: 0.65 };
+          }
+        } else if (t.id === 'fx') {
+          // Classic riser/downer strike on step 1
+          if (i === 0) {
+            updatedSteps[i] = { active: true, velocity: 0.8 };
+          }
+        }
+      }
+      actions.changeDrumVelocity(t.id, 0, 1.0); // Simple tickle to store triggers
+      t.steps = updatedSteps;
+    });
+    // Trigger store update to apply changes
+    actions.updateDrumTrackField('kick', 'volume', state.project.drumTracks[0].volume);
+  };
+
   const getActiveSoloTrack = () => {
     return state.project.drumTracks.find(t => t.solo);
   };
@@ -69,6 +126,18 @@ export default function DrumMachine() {
           >
             <Sparkles size={11} className="animate-spin" />
             BROWSE 30+ MASTER SAMPLES VAULT
+          </button>
+
+          <div className="h-4 w-[1px] bg-slate-800 hidden md:block" />
+
+          {/* Auto Beat button */}
+          <button
+            onClick={handleAutoDrumGen}
+            className="px-3 py-1 bg-cyan-950/40 border border-cyan-800 text-cyan-400 hover:bg-cyan-400 hover:text-slate-950 font-black font-mono text-[9px] rounded tracking-wide transition active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 animate-pulse"
+            title="Algorithmic pro 4-on-the-floor EDM beat filler"
+          >
+            <Sparkles size={11} />
+            ⚡ AUTO-BEAT
           </button>
         </div>
       </div>

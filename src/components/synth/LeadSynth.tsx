@@ -149,6 +149,9 @@ export default function LeadSynth() {
                 { label: '⬜ SQUARE', value: 'square' },
                 { label: '🔺 TRIANGLE', value: 'triangle' },
                 { label: '🟢 SINE WAVE', value: 'sine' },
+                { label: '⚡ PULSE WAVE', value: 'pulse' },
+                { label: '🌌 SUPERSAW', value: 'supersaw' },
+                { label: '🔔 METALLIC', value: 'metallic' },
               ]}
               value={lead.oscType}
               onChange={(e) => actions.updateLeadSynth('oscType', e.target.value as any)}
